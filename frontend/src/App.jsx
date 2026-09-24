@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar.jsx';
 import ScrollToHash from './components/ScrollToHash.jsx';
-import ScrollProgress, { useReveal } from './components/motion.jsx';
+import { useReveal } from './components/motion.jsx';
 import { Footer } from './components/MatchCard.jsx';
 import Scene3D from './three/Scene3D.jsx';
 import Landing from './pages/Landing.jsx';
@@ -24,7 +24,6 @@ function Shell() {
       <ScrollToHash />
       <Scene3D />
       <div className="veil" aria-hidden="true" />
-      <ScrollProgress />
       <Navbar />
       <main id="main">
         <Routes>

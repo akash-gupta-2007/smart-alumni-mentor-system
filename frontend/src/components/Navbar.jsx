@@ -67,7 +67,6 @@ export default function Navbar() {
           <nav className="nav-links" aria-label="Primary">
             <NavLink to="/#how" onClick={() => setOpen(false)}>How it scores</NavLink>
             <NavLink to="/#modules" onClick={() => setOpen(false)}>Modules</NavLink>
-            <NavLink to="/#saas" onClick={() => setOpen(false)}>Plans</NavLink>
             {user && <NavLink to="/app" onClick={() => setOpen(false)}>Workspace</NavLink>}
           </nav>
           <div className="nav-cta">

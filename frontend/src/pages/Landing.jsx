@@ -101,32 +101,6 @@ export default function Landing() {
           <Link to="/login" className="btn btn-gold btn-lg">Enter the marketplace <IconArrow size={16} /></Link>
         </div>
       </section>
-
-      {/* SAAS */}
-      <section id="saas" className="section wrap">
-        <div className="eyebrow rv">Run it as a service</div>
-        <h2 className="rv">One deploy <span className="gold-text">per college.</span></h2>
-        <p className="lead rv">Single-tenant SaaS: each college gets its own Oracle schema, its own coordinator, its own data. No cross-college leakage by construction.</p>
-        <div className="grid3">
-          {[
-            ['Starter · Dept pilot', '1 department · 100 students · email support', 'Free'],
-            ['College · Most popular', 'Whole campus · unlimited mentors · CSV exports · audit trail', '₹499/mo'],
-            ['University · Multi-campus', 'Separate schema per campus · SSO-ready JWT · priority support', 'Talk to us']
-          ].map(([t, d, p]) => (
-            <div className="card rv" key={t}><h3>{t}</h3><p style={{ color: 'var(--muted)', lineHeight: 1.7 }}>{d}</p><div className="kpi gold-text">{p}</div></div>
-          ))}
-        </div>
-        <div className="card rv" style={{ marginTop: 22 }}>
-          <h3>Self-host in 4 steps</h3>
-          <ol style={{ color: 'var(--muted)', lineHeight: 1.9, paddingLeft: 20 }}>
-            <li>Provision Oracle XE, run <code>database/setup.sql</code> order via SQL*Plus.</li>
-            <li>Set <code>DB_PASSWORD</code> + 32-char <code>JWT_SECRET</code> (see <code>backend/.env.example</code>).</li>
-            <li>Start API (<code>:4000</code>, check <code>/ready</code>) + UI (<code>:5173</code>).</li>
-            <li>Log in as seeded coordinator, invite alumni, watch the KPIs.</li>
-          </ol>
-          <p style={{ color: 'var(--muted)', fontSize: 13 }}>Backups: schedule Oracle Data Pump (<code>expdp</code>) nightly. SMTP: wire <code>SMTP_URL</code> to receive reset emails instead of demo tokens.</p>
-        </div>
-      </section>
     </div>
   );
 }
