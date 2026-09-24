@@ -65,8 +65,8 @@ export default function Navbar() {
         <button className="btn btn-ghost btn-sm burger nav-icon-btn" aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open} onClick={() => setOpen(o => !o)}><IconMenu size={18} /></button>
         <div className={`nav-menu ${open ? 'open' : ''}`}>
           <nav className="nav-links" aria-label="Primary">
-            <NavLink to="/#how" onClick={() => setOpen(false)}>How it scores</NavLink>
-            <NavLink to="/#modules" onClick={() => setOpen(false)}>Modules</NavLink>
+            {!user && <NavLink to="/#how" onClick={() => setOpen(false)}>How it scores</NavLink>}
+            {!user && <NavLink to="/#modules" onClick={() => setOpen(false)}>Modules</NavLink>}
             {user && <NavLink to="/app" onClick={() => setOpen(false)}>Workspace</NavLink>}
           </nav>
           <div className="nav-cta">
