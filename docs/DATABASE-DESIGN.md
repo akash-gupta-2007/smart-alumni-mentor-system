@@ -1,0 +1,4 @@
+# Database Design — Oracle XE (schema MENTOR_APP)
+
+Tables (12): users, student_profiles (1:1), alumni_profiles (1:1, max_mentees 1–20), availability_slots (day 0–6, HH:MM, end>start), mentorship_requests, matches (score 0–100, JSON breakdown/reasons, UNIQUE(request,alumni)), meetings (meet_mode, 4 states, end>start), meeting_logs (1:1, 5–300 min), goals (status, 0–100), feedback (3× 1–5, UNIQUE(meeting,from), no self-rate), audit_logs (identity, append-only trigger), login_attempts (lockout).
+Programmatic: `mentor_sec` (fn_is_locked, fn_capacity_ok, proc_reg_fail/success, autonomous proc_audit); triggers (updated_at touch, audit immutability); view `v_mentor_load`. Full column detail: DATA-DICTIONARY.md. Setup: `database/setup.sql` → db scripts via SQL*Plus. Migrations: `db/migrate_02_feedback.sql`.

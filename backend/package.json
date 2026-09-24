@@ -1,0 +1,26 @@
+{
+  "name": "mentor-market-backend",
+  "version": "2.0.0",
+  "description": "BIT-05 Explainable Alumni-Mentor Matching Marketplace API (Oracle + SQL*Plus)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test tests/matching.test.js tests/security.test.js tests/workflow.test.js",
+    "seed": "node src/seed.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.2.0",
+    "helmet": "^7.1.0",
+    "joi": "^17.13.1",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "oracledb": "^6.7.0",
+    "prom-client": "^15.1.0",
+    "uuid": "^9.0.1"
+  }
+}

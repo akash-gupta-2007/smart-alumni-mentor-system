@@ -1,0 +1,20 @@
+# MentorSetu containers — Oracle XE stays HOST-LOCAL (Oracle images are not
+# redistributable here). The API reaches it via ORACLE_CONNECT (host gateway).
+# Local dev uses start-local.bat instead; this file is for demo/CI packaging.
+services:
+  api:
+    build: ./backend
+    ports: ["4000:4000"]
+    environment:
+      PORT: 4000
+      NODE_ENV: production
+      ORACLE_CONNECT: ${ORACLE_CONNECT:-host.docker.internal/XEPDB1}
+      DB_USER: ${DB_USER:-mentor_app}
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (32+ chars)}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+    extra_hosts: ["host.docker.internal:host-gateway"]
+  web:
+    build: ./frontend
+    ports: ["8080:80"]
+    depends_on: [api]

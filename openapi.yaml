@@ -1,0 +1,32 @@
+openapi: 3.0.3
+info: { title: MentorSetu API (BIT-05), version: 2.0.0, description: 'Explainable capacity-aware mentor matching. Served at /openapi.yaml. Auth: Bearer JWT.' }
+servers: [{ url: http://localhost:4000 }]
+components:
+  securitySchemes: { bearer: { type: http, scheme: bearer, bearerFormat: JWT } }
+  schemas:
+    Match: { type: object, properties: { alumni_id: { type: string }, name: { type: string }, score: { type: number }, full: { type: boolean }, breakdown: { type: object }, reasons: { type: array, items: { type: string } } } }
+    Error: { type: object, properties: { error: { type: string } } }
+security: [{ bearer: [] }]
+paths:
+  /health: { get: { security: [], responses: { '200': { description: 'ok + db status' } } } }
+  /metrics: { get: { security: [], responses: { '200': { description: Prometheus metrics } } } }
+  /api/auth/register: { post: { security: [], requestBody: { required: true, content: { application/json: { schema: { type: object, required: [email, password, full_name, role], properties: { email: { type: string }, password: { type: string, minLength: 10 }, full_name: { type: string }, role: { enum: [student, alumni] } } } } } }, responses: { '201': { description: '{id, token}' }, '400': { description: validation }, '409': { description: duplicate } } } }
+  /api/auth/login: { post: { security: [], requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { email: { type: string }, password: { type: string } } } } } }, responses: { '200': { description: '{token, user}' }, '401': { description: invalid }, '429': { description: locked } } } }
+  /api/auth/logout: { post: { responses: { '200': { description: audited logout } } } }
+  /api/profile: { get: { responses: { '200': { description: own user + role profile } } }, put: { requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { full_name: { type: string }, languages: { type: array }, bio: { type: string }, max_mentees: { type: integer } } } } } }, responses: { '200': { description: updated } } } }
+  /api/requests: { post: { description: 'STUDENT: create mentorship request', responses: { '201': { description: request }, '403': { description: wrong role } } } }
+  /api/requests/open: { get: { description: 'ALUMNI/COORDINATOR: open requests', responses: { '200': { description: list } } } }
+  /api/suggest/{id}: { get: { parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }], responses: { '200': { description: 'Top-5 Match[]', content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Match' } } } } }, '403': { description: not owner }, '404': { description: no request } } } }
+  /api/request-match: { post: { responses: { '201': { description: requested|waitlisted + capacity } } } }
+  /api/matches/mine: { get: { responses: { '200': { description: role-filtered matches } } } }
+  /api/matches/{id}: { patch: { requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { status: { enum: [accepted, declined, completed] } } } } } }, responses: { '200': { description: updated }, '403': { description: not owner }, '404': { description: missing }, '409': { description: illegal transition | at capacity } } } }
+  /api/slots: { post: { description: 'ALUMNI: add weekly slot', responses: { '201': { description: slot }, '400': { description: bad time } } } }
+  /api/slots/{id}: { delete: { description: 'ALUMNI: delete own slot', responses: { '200': { description: deleted }, '404': { description: missing } } }, put: { description: 'ALUMNI: edit own slot', responses: { '200': { description: updated }, '400': { description: bad time }, '404': { description: missing } } } }
+  /api/meetings/mine: { get: { responses: { '200': { description: own meetings with counterpart } } } }
+  /api/meetings: { post: { responses: { '201': { description: scheduled }, '409': { description: OVERLAP|PAST|OUTSIDE } } } }
+  /api/meetings/{id}: { patch: { responses: { '200': { description: updated }, '409': { description: terminal state } } } }
+  /api/goals: { post: { responses: { '201': { description: goal } } }, get: { responses: { '200': { description: own goals } } } }
+  /api/goals/{id}: { patch: { responses: { '200': { description: updated } } }, delete: { responses: { '200': { description: deleted }, '404': { description: missing } } } }
+  /api/feedback: { post: { responses: { '201': { description: rated }, '409': { description: duplicate } } } }
+  /api/admin/kpis: { get: { description: 'COORDINATOR', responses: { '200': { description: satisfaction, load, conflicts }, '403': { description: wrong role } } } }
+  /api/admin/audit: { get: { description: 'COORDINATOR: latest 100 audit rows', responses: { '200': { description: list } } } }

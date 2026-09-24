@@ -1,0 +1,22 @@
+
+Session altered.
+
+=== row counts ===
+
+   USERS_N   ALUMNI_N STUDENTS_N    SLOTS_N                                     
+---------- ---------- ---------- ----------                                     
+        33         12         20         38                                     
+
+=== capacity gate function (1 = has bandwidth) ===
+
+ALUMNI1_OK STRANGER_LOCKED                                                      
+---------- ---------------                                                      
+         1               0                                                      
+
+PASS: duplicate email rejected (UNIQUE)                                         
+PASS: rating 9 rejected (CHECK/FK, ORA-2290)                                    
+PASS: audit append-only enforced (ORA-20001)                                    
+PASS: orphan match rejected (FK, ORA-02291)                                     
+
+PL/SQL procedure successfully completed.
+
