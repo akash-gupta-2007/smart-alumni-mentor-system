@@ -10,8 +10,9 @@ import { AuthProvider, useAuth } from './lib/auth.jsx';
 
 // RBAC at the route level: no token → login page (no more "Guest" workspace)
 function ProtectedRoute({ children }) {
-  const { token } = useAuth();
+  const { token, loading } = useAuth();
   const loc = useLocation();
+  if (loading) return <div className="section wrap" style={{textAlign:'center',padding:'80px 0'}}><div style={{width:36,height:36,margin:'0 auto',border:'3px solid var(--line)',borderTopColor:'var(--gold)',borderRadius:'50%',animation:'spin 1s linear infinite'}} /><style jsx>{`@keyframes spin{to{transform:rotate(360deg)}`}</style><p style={{marginTop:16,color:'var(--muted)'}}>Restoring session…</p></div>;
   if (!token) return <Navigate to="/login" replace state={{ from: loc.pathname }} />;
   return children;
 }

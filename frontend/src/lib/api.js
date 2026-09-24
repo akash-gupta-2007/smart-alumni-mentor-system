@@ -6,33 +6,48 @@ let refreshPromise = null;
 function doRefresh() {
   if (!refreshPromise) {
     refreshPromise = (async () => {
+      const refreshToken = localStorage.getItem('mm_refresh');
+      if (!refreshToken) throw new Error('no refresh token');
       const rr = await fetch(API + '/auth/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: localStorage.getItem('mm_refresh') })
+        body: JSON.stringify({ refreshToken })
       });
       const dd = await rr.json().catch(() => ({}));
       if (!rr.ok || !dd.token) throw new Error(dd.error || 'refresh failed');
       localStorage.setItem('mm_token', dd.token);
       if (dd.refreshToken) localStorage.setItem('mm_refresh', dd.refreshToken);
+      if (dd.user) localStorage.setItem('mm_user', JSON.stringify(dd.user));
     })().finally(() => { refreshPromise = null; });
   }
   return refreshPromise;
 }
+// Decode JWT exp locally to avoid needless 401 round-trips
+function isTokenExpired(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return payload.exp * 1000 < Date.now() + 30000; // 30s buffer
+  } catch { return true; }
+}
 async function req(path, opts = {}, retried = false) {
   const token = localStorage.getItem('mm_token');
+  // Proactively refresh if token is expired (or about to expire) before sending
+  if (token && isTokenExpired(token) && localStorage.getItem('mm_refresh') && !path.startsWith('/auth/')) {
+    try { await doRefresh(); }
+    catch { /* fall through, let the 401 handler deal with it */ }
+  }
+  const freshToken = localStorage.getItem('mm_token');
   const r = await fetch(API + path, {
     ...opts,
-    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}), ...(opts.headers || {}) },
+    headers: { 'Content-Type': 'application/json', ...(freshToken ? { Authorization: 'Bearer ' + freshToken } : {}), ...(opts.headers || {}) },
     body: opts.body ? JSON.stringify(opts.body) : undefined
   });
+  // 401 on protected endpoint → try one silent refresh
   if (r.status === 401 && !retried && !path.startsWith('/auth/') && localStorage.getItem('mm_refresh')) {
-    // SaaS sessions: silently rotate once before giving up
     try { await doRefresh(); return req(path, opts, true); }
     catch { /* fall through to logout */ }
   }
-  // Genuine expiry only: /auth/* failures (bad login, spent reset token, …)
-  // are returned as errors, never treated as logout.
+  // Only treat 401 as session expiry. 403/404/500 etc. are NOT logout triggers.
   if (r.status === 401 && !path.startsWith('/auth/') && localStorage.getItem('mm_token')) {
     localStorage.removeItem('mm_token');
     localStorage.removeItem('mm_refresh');
@@ -94,6 +109,7 @@ export const api = {
 export function saveSession(r) {
   localStorage.setItem('mm_token', r.token);
   if (r.refreshToken) localStorage.setItem('mm_refresh', r.refreshToken);
+  if (r.user) localStorage.setItem('mm_user', JSON.stringify(r.user));
 }
 export function clearSession() {
   localStorage.removeItem('mm_token');

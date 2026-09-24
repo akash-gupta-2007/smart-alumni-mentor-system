@@ -12,6 +12,7 @@ function Bell() {
   const { token } = useAuth();
   const loc = useLocation();
   useEffect(() => { setOpen(false); }, [loc.pathname]);
+  // Only load on mount + pathname change; NOT on token change (avoids double-fire on login)
   useEffect(() => {
     if (!token) return;
     let stop = false;
@@ -19,7 +20,7 @@ function Bell() {
     load();
     const t = setInterval(load, 30000);
     return () => { stop = true; clearInterval(t); };
-  }, [token]);
+  }, [loc.pathname]);
   if (!token) return null;
   return (
     <span style={{ position: 'relative' }} className="notif-wrap">

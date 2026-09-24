@@ -13,7 +13,11 @@ function readStored() {
 }
 
 export function AuthProvider({ children }) {
-  const [auth, setAuth] = useState(readStored);
+  const [auth, setAuth] = useState(() => {
+    // Synchronous initial read — never blank if mm_user exists
+    const stored = readStored();
+    return stored.token ? stored : { ...blank, loading: true };
+  });
 
   // Cross-tab + api.js 401 interceptor sync (api.js fires mm:logout on expiry)
   useEffect(() => {
@@ -21,6 +25,8 @@ export function AuthProvider({ children }) {
     const onExpire = () => { clearSession(); setAuth(blank); };
     window.addEventListener('storage', onStore);
     window.addEventListener('mm:logout', onExpire);
+    // Initial hydration complete
+    setAuth(a => ({ ...a, loading: false }));
     return () => {
       window.removeEventListener('storage', onStore);
       window.removeEventListener('mm:logout', onExpire);
@@ -30,7 +36,7 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, password) => {
     const r = await api.login({ email, password });
     saveSession(r);
-    setAuth({ token: r.token, user: r.user });
+    setAuth({ token: r.token, user: r.user, loading: false });
     return r.user;
   }, []);
 
@@ -38,8 +44,7 @@ export function AuthProvider({ children }) {
     const r = await api.register(body);
     saveSession(r);
     const me = r.user || await api.me().catch(() => ({ full_name: body.full_name, role: body.role }));
-    localStorage.setItem('mm_user', JSON.stringify(me));
-    setAuth({ token: r.token, user: me });
+    setAuth({ token: r.token, user: me, loading: false });
     return me;
   }, []);
 
@@ -49,7 +54,7 @@ export function AuthProvider({ children }) {
     setAuth(blank);
   }, []);
 
-  return <AuthCtx.Provider value={{ ...auth, loading: false, login, register, logout }}>{children}</AuthCtx.Provider>;
+  return <AuthCtx.Provider value={{ ...auth, login, register, logout }}>{children}</AuthCtx.Provider>;
 }
 
 export const useAuth = () => useContext(AuthCtx);
