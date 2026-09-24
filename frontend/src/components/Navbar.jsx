@@ -68,29 +68,31 @@ export default function Navbar() {
           <span style={{ color: 'var(--brand)' }} aria-hidden="true">●</span> Mentor<span className="gold-text">Setu</span>
         </Link>
         <span className="chip chip-gold">BIT-05 · TRL 4–5</span>
-        <nav className={`nav-links ${open ? 'open' : ''}`} aria-label="Primary">
-          <NavLink to="/#how" onClick={() => setOpen(false)} style={linkStyle}>How it scores</NavLink>
-          <NavLink to="/#modules" onClick={() => setOpen(false)} style={linkStyle}>Modules</NavLink>
-          <NavLink to="/#demo" onClick={() => setOpen(false)} style={linkStyle}>Live demo</NavLink>
-          {user && <NavLink to="/app" onClick={() => setOpen(false)} style={linkStyle}>Workspace</NavLink>}
-        </nav>
         <button className="btn btn-ghost btn-sm burger" aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open} onClick={() => setOpen(o => !o)}>☰</button>
-        <div className="nav-cta" style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="btn btn-ghost btn-sm" onClick={toggle} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>{theme === 'dark' ? '☀ light' : '◐ dark'}</button>
-          <Bell />
-          {!user ? (
-            <>
-              <button className="btn btn-ghost btn-sm" onClick={() => nav('/login')}>Login</button>
-              <button className="btn btn-gold btn-sm" onClick={() => nav('/login?mode=register')}>Join →</button>
-            </>
-          ) : (
-            <>
-              <button className="btn btn-ghost btn-sm" onClick={() => nav('/app')} title={`${user.role} workspace`}>
-                {user.full_name} · <span className="gold-text">{user.role}</span>
-              </button>
-              <button className="btn btn-ghost btn-sm" onClick={goLogout}>Logout</button>
-            </>
-          )}
+        <div className={`nav-menu ${open ? 'open' : ''}`}>
+          <nav className="nav-links" aria-label="Primary">
+            <NavLink to="/#how" onClick={() => setOpen(false)} style={linkStyle}>How it scores</NavLink>
+            <NavLink to="/#modules" onClick={() => setOpen(false)} style={linkStyle}>Modules</NavLink>
+            <NavLink to="/#demo" onClick={() => setOpen(false)} style={linkStyle}>Live demo</NavLink>
+            {user && <NavLink to="/app" onClick={() => setOpen(false)} style={linkStyle}>Workspace</NavLink>}
+          </nav>
+          <div className="nav-cta">
+            <button className="btn btn-ghost btn-sm" onClick={toggle} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>{theme === 'dark' ? '☀ light' : '◐ dark'}</button>
+            <Bell />
+            {!user ? (
+              <>
+                <button className="btn btn-ghost btn-sm" onClick={() => { setOpen(false); nav('/login'); }}>Login</button>
+                <button className="btn btn-gold btn-sm" onClick={() => { setOpen(false); nav('/login?mode=register'); }}>Join →</button>
+              </>
+            ) : (
+              <>
+                <button className="btn btn-ghost btn-sm" onClick={() => { setOpen(false); nav('/app'); }} title={`${user.role} workspace`}>
+                  {user.full_name} · <span className="gold-text">{user.role}</span>
+                </button>
+                <button className="btn btn-ghost btn-sm" onClick={goLogout}>Logout</button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
