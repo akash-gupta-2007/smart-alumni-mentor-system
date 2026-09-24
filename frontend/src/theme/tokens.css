@@ -63,6 +63,8 @@ a { color: inherit; }
 .nav-links a { text-decoration: none; font-size: 14px; font-weight: 600; color: var(--muted); padding: 8px 13px; border-radius: var(--r-pill); }
 .nav-links a:hover { color: var(--ink); background: var(--surface2); }
 .nav-cta { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.nav .btn { transition: none; }
+.nav .btn:hover, .nav .btn:active { transform: none; }
 .burger { display: none; margin-left: auto; }
 @media (max-width: 860px) {
   .burger { display: inline-block; }
