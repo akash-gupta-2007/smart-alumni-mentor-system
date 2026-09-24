@@ -6,7 +6,7 @@ export function ScoreBar({ breakdown }) {
     <div style={{ display: 'flex', height: 8, borderRadius: 99, overflow: 'hidden', background: 'var(--line)', marginTop: 8 }} title="Score composition">
       {WEIGHTS.map(([k, w, label]) => {
         const v = Math.max(0, Math.min(1, Number(breakdown[k]) || 0));
-        return <i key={k} title={`${label}: ${v} × ${w}`} style={{ width: `${v * w * 100}%`, background: k === 'domain' ? 'var(--brand)' : k === 'goal' ? 'var(--g-500)' : k === 'lang' ? 'var(--gold-300)' : 'var(--gold)', display: 'block', height: '100%' }} />;
+        return <i key={k} title={`${label}: ${v} × ${w}`} style={{ width: `${v * w * 100}%`, background: k === 'domain' ? 'var(--brand)' : k === 'goal' ? 'var(--b-400)' : k === 'lang' ? 'var(--b-300)' : 'var(--b-200)', display: 'block', height: '100%' }} />;
       })}
     </div>
   );
@@ -36,7 +36,7 @@ export default function MatchCard({ m, i, onAsk, freeDays }) {
       <ScoreBar breakdown={m.breakdown} />
       <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 5 }}>40% domain · 25% goal · 15% language · 20% availability, minus load penalty</div>
       <div style={{ margin: '12px 0' }}>{m.reasons.map((r, j) => <span className="chip" key={j}><IconCheck size={12} /> {r}</span>)}</div>
-      <WeekStrip freeDays={common.length ? common : (freeDays || [])} caption="Gold = common slot-days" />
+      <WeekStrip freeDays={common.length ? common : (freeDays || [])} caption="Blue = common slot-days" />
       <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 6 }}>weights 40·25·15·20 · load {m.active}/{m.cap}</div>
       <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
         <button className={m.full ? 'btn btn-ghost btn-sm' : 'btn btn-green btn-sm'} onClick={() => onAsk(m)}>{m.full ? 'Join waitlist' : 'Request mentor'}</button>

@@ -59,7 +59,7 @@ export default function Navbar() {
       <a href="#main" className="btn btn-ghost btn-sm" style={{ position: 'absolute', left: -9999 }} onFocus={e => { e.target.style.left = 8; e.target.style.top = 8; e.target.style.zIndex = 100; }} onBlur={e => { e.target.style.left = -9999; }}>Skip to content</a>
       <div className="nav-inner">
         <Link to="/" className="nav-brand" aria-label="MentorSetu home">
-          <span className="nav-mark" aria-hidden="true"><span style={{ color: 'var(--gold-100)', fontSize: 13, lineHeight: 1 }}>◆</span></span>
+          <span className="nav-mark" aria-hidden="true"><span style={{ color: 'var(--white)', fontSize: 13, lineHeight: 1 }}>◆</span></span>
           Mentor<span className="gold-text">Setu</span>
         </Link>
         <button className="btn btn-ghost btn-sm burger nav-icon-btn" aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open} onClick={() => setOpen(o => !o)}><IconMenu size={18} /></button>

@@ -130,7 +130,6 @@ export default function Dashboard() {
               <button className="btn btn-green btn-sm" onClick={createReq}>Create request</button>
               <button className="btn btn-gold btn-sm" onClick={suggest}>Suggest Top-3</button>
             </div>
-            {requestId && <p style={{ color: 'var(--muted)', fontSize: 13 }}>request_id: {requestId}</p>}
             <p style={{ color: 'var(--muted)', fontSize: 13 }}>Innovation: full mentors never vanish — they flip to <b>waitlist</b> with the same explanation payload.</p>
           </div>
           <div>{matches.map((m, i) => <MatchCard key={i} m={m} i={i} onAsk={ask} freeDays={String(freeDays).split(',').map(Number).filter(n => n >= 0 && n <= 6)} />)}

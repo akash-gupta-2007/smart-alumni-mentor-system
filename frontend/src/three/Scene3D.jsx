@@ -25,12 +25,12 @@ function Knot() {
     <Float speed={1.8} rotationIntensity={0.5} floatIntensity={1.1}>
       <mesh ref={ref}>
         <torusKnotGeometry args={[1.2, 0.33, 200, 28]} />
-        <meshStandardMaterial color="#0a5c36" metalness={0.6} roughness={0.24} emissive="#0a5c36" emissiveIntensity={0.35} />
+        <meshStandardMaterial color="#1d4ed8" metalness={0.6} roughness={0.24} emissive="#1d4ed8" emissiveIntensity={0.35} />
       </mesh>
       {[1.95, 2.35].map((r, i) => (
         <mesh key={r} rotation={[Math.PI / 2.4 + i * 0.35, 0.3, 0]}>
           <torusGeometry args={[r, 0.03, 12, 140]} />
-          <meshStandardMaterial color="#c9a227" metalness={1} roughness={0.18} emissive="#c9a227" emissiveIntensity={0.65} />
+          <meshStandardMaterial color="#60a5fa" metalness={1} roughness={0.18} emissive="#60a5fa" emissiveIntensity={0.65} />
         </mesh>
       ))}
     </Float>
@@ -55,7 +55,7 @@ function Dust({ n = 500 }) {
     }
     ref.current.instanceMatrix.needsUpdate = true;
   });
-  return <instancedMesh ref={ref} args={[null, null, n]}><sphereGeometry args={[1, 8, 8]} /><meshBasicMaterial color="#e8c766" transparent opacity={0.8} /></instancedMesh>;
+  return <instancedMesh ref={ref} args={[null, null, n]}><sphereGeometry args={[1, 8, 8]} /><meshBasicMaterial color="#93c5fd" transparent opacity={0.8} /></instancedMesh>;
 }
 export default function Scene3D() {
   return (
@@ -63,8 +63,8 @@ export default function Scene3D() {
       gl={{ antialias: true, alpha: true }} dpr={[1, 1.75]}>
       <ambientLight intensity={0.75} />
       <directionalLight position={[5, 6, 4]} intensity={1.5} />
-      <pointLight position={[-5, -2, 3]} intensity={30} color="#c9a227" />
-      <pointLight position={[4, 3, -2]} intensity={18} color="#16a34a" />
+      <pointLight position={[-5, -2, 3]} intensity={30} color="#60a5fa" />
+      <pointLight position={[4, 3, -2]} intensity={18} color="#2563eb" />
       <Stars radius={40} depth={25} count={1500} factor={3.2} fade speed={0.6} />
       <Knot />
       <Dust />

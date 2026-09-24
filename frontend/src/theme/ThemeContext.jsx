@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 const Ctx = createContext(null);
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => localStorage.getItem('mm_theme') || 'dark');
+  const [theme, setTheme] = useState(() => localStorage.getItem('mm_theme') || 'light');
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem('mm_theme', theme);
