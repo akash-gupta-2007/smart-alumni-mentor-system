@@ -1,5 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const { v4: uuid } = require('uuid');
 const { q, one } = require('../config/db');
 const { sign } = require('../middleware/auth');
@@ -66,7 +67,39 @@ r.get('/me', auth, async (req, res) => {
   const me = await one('SELECT id, email, role, full_name, languages FROM users WHERE id = :id', { id: req.user.id });
   res.json(me || null);
 });
-// POST /api/auth/logout — client discards JWT; server records the audit event
+// POST /api/auth/forgot — always 200 (no enumeration). Demo-mode: token returned
+// so the flow works without SMTP; in production, email it instead of returning it.
+r.post('/forgot', async (req, res) => {
+  const { error, value } = require('../middleware/validate').schemas.login
+    .fork('password', (s) => s.optional()).validate(req.body, { stripUnknown: true });
+  if (error || !value.email) return res.json({ ok: true });
+  const u = await one('SELECT id FROM users WHERE email = :email AND is_active = 1', { email: String(value.email).toLowerCase() });
+  if (!u) { await audit(null, 'AUTH.FORGOT_MISS', 'users', null, {}, req.ip); return res.json({ ok: true }); }
+  const token = uuid() + uuid().replace(/-/g, '');
+  const th = crypto.createHash('sha256').update(token).digest('hex');
+  await q(`INSERT INTO password_resets (id, user_id, token_hash, expires_at)
+           VALUES (:id, :who, :th, SYSTIMESTAMP + INTERVAL '1' HOUR)`,
+    { id: uuid(), who: u.id, th });
+  await audit(u.id, 'AUTH.FORGOT', 'users', u.id, {}, req.ip);
+  res.json({ ok: true, demo_token: token });
+});
+// POST /api/auth/reset — consume a forgot token, set a new password
+r.post('/reset', async (req, res) => {
+  const { token, password } = req.body || {};
+  if (typeof token !== 'string' || !token) return res.status(400).json({ error: 'token required' });
+  const { error } = require('joi').string().min(10).max(128).required().validate(password);
+  if (error) return res.status(400).json({ error: 'Password needs 10+ chars' });
+  const th = crypto.createHash('sha256').update(token).digest('hex');
+  const row = await one(`SELECT id, user_id, expires_at, used FROM password_resets
+                         WHERE token_hash = :th AND used = 0 AND expires_at > SYSTIMESTAMP`, { th });
+  if (!row) return res.status(400).json({ error: 'Invalid or expired token' });
+  const hash = await bcrypt.hash(password, 12);
+  await q('UPDATE users SET password_hash = :h WHERE id = :id', { h: hash, id: row.user_id });
+  await q('UPDATE password_resets SET used = 1 WHERE id = :id', { id: row.id });
+  await q('DELETE FROM login_attempts WHERE email = (SELECT email FROM users WHERE id = :id)', { id: row.user_id });
+  await audit(row.user_id, 'AUTH.RESET', 'users', row.user_id, {}, req.ip);
+  res.json({ ok: true });
+});
 r.post('/logout', auth, async (req, res) => {
   await audit(req.user.id, 'AUTH.LOGOUT', 'users', req.user.id, {}, req.ip);
   res.json({ ok: true });

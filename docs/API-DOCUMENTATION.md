@@ -29,7 +29,11 @@ Base `http://localhost:4000`. Auth: `Authorization: Bearer <JWT>` except registe
 
 ## Coordinator
 - `GET /api/admin/kpis` → satisfaction (+comm/relevance), load table + stddev, conflict rate, totals (students/mentors/active/pending/open/upcoming/goals).
-- `GET /api/admin/audit` → latest 100 audit rows.
+- `GET /api/admin/audit?q=&limit=&offset=` → latest audit rows, searchable.
+
+## Notifications / password reset
+- `GET /api/notifications?unread=&limit=` → `{unread, items[]}` (own only). `PATCH /api/notifications/:id/read`.
+- `POST /api/auth/forgot` → always 200 (demo returns token; production should email it). `POST /api/auth/reset` → sets new password, clears lockout.
 
 ## Errors
 Consistent `{error}` (+`details[]` for 400). Never leaks hashes, secrets, or stacks. 404 JSON for unknown routes.

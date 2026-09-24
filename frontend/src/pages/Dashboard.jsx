@@ -32,7 +32,7 @@ export default function Dashboard() {
   const [openReq, setOpenReq] = useState([]);
   const [prof, setProf] = useState(null);
   const [editSlot, setEditSlot] = useState(null);
-  const loadOpen = () => api.openRequests().then(setOpenReq).catch(() => setOpenReq([]));
+  const loadOpen = (q) => api.openRequests(q).then(setOpenReq).catch(() => setOpenReq([]));
   const loadProf = () => api.profile().then(setProf).catch(() => setProf(null));
   const loadSlots = () => { if (user.id) api.slots(user.id).then(setMySlots).catch(() => setMySlots([])); };
   const decide = (id, status) => api.decide(id, status).then(() => { setMsg('Match ' + status); loadMine(); }).catch(e => setMsg(e.message));
@@ -119,7 +119,7 @@ export default function Dashboard() {
             {requestId && <p style={{ color: 'var(--muted)', fontSize: 13 }}>request_id: {requestId}</p>}
             <p style={{ color: 'var(--muted)', fontSize: 13 }}>Innovation: full mentors never vanish — they flip to <b>waitlist</b> with the same explanation payload.</p>
           </div>
-          <div>{matches.map((m, i) => <MatchCard key={i} m={m} i={i} onAsk={ask} />)}
+          <div>{matches.map((m, i) => <MatchCard key={i} m={m} i={i} onAsk={ask} freeDays={String(freeDays).split(',').map(Number).filter(n => n >= 0 && n <= 6)} />)}
             {!matches.length && <div className="card">No suggestions yet — create a request, then Suggest.</div>}</div>
           </div>
           )}
@@ -165,6 +165,8 @@ export default function Dashboard() {
           {user.role !== 'student' && (
             <div style={{ marginTop: 14 }}>
               <h4>Open student requests</h4>
+              <label htmlFor="oq">Search domain / goal / title</label>
+              <input id="oq" placeholder="e.g. DevOps" onChange={e => loadOpen(e.target.value)} />
               {!openReq.length && <p style={{ color: 'var(--muted)' }}>No open requests right now.</p>}
               {openReq.map(o => <div key={o.id} style={{ borderBottom: '1px solid var(--line)', padding: '8px 0' }}><b>{o.title}</b> <span className="chip">{o.goal_type}</span><span className="chip">{o.domain}</span><span style={{ color: 'var(--muted)', fontSize: 13 }}>{o.language}</span></div>)}
             </div>
@@ -319,7 +321,9 @@ export default function Dashboard() {
               <tbody>{(kpis?.mentor_load || []).map((x, i) => <tr key={i}><td>{x.full_name}</td><td>{x.active_mentees}</td><td>{x.max_mentees}</td><td><div className="meter"><i style={{ width: x.load_pct + '%' }} /></div>{x.load_pct}%</td></tr>)}</tbody></table>
           </div>
           <div className="card rv" style={{ marginTop: 14 }}>
-            <h3>Audit trail — <span style={{ fontWeight: 400, fontSize: 14, color: 'var(--muted)' }}>latest 100, append-only (UPDATE/DELETE blocked by trigger)</span></h3>
+            <h3>Audit trail — <span style={{ fontWeight: 400, fontSize: 14, color: 'var(--muted)' }}>append-only (UPDATE/DELETE blocked by trigger)</span></h3>
+            <label htmlFor="aq">Search action / entity</label>
+            <input id="aq" placeholder="e.g. MATCH.ACCEPTED" onChange={e => api.adminAudit(e.target.value).then(setAuditRows).catch(() => {})} />
             <table className="tbl"><thead><tr><th>#</th><th>Action</th><th>Entity</th><th>Actor</th><th>Time</th></tr></thead>
               <tbody>{auditRows.map(a => <tr key={a.id}><td>{a.id}</td><td>{a.action}</td><td>{a.entity}</td><td style={{ fontSize: 12 }}>{a.actor_user_id ? String(a.actor_user_id).slice(0, 8) : '—'}</td><td style={{ fontSize: 12 }}>{new Date(a.created_at).toLocaleString()}</td></tr>)}</tbody></table>
             {!auditRows.length && <p style={{ color: 'var(--muted)' }}>No audit rows via API (backend offline?) — direct SQL: <code>SELECT * FROM audit_logs ORDER BY id DESC FETCH FIRST 20 ROWS ONLY;</code></p>}

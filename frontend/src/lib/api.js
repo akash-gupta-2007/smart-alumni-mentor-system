@@ -42,7 +42,12 @@ export const api = {
   kpis: () => req('/admin/kpis'),
   mine: () => req('/matches/mine'),
   slotDel: (id) => req('/slots/' + id, { method: 'DELETE' }),
-  adminAudit: () => req('/admin/audit')
+  adminAudit: (q) => req('/admin/audit' + (q ? '?q=' + encodeURIComponent(q) : '')),
+  notif: () => req('/notifications?limit=10'),
+  notifRead: (id) => req('/notifications/' + id + '/read', { method: 'PATCH' }),
+  openRequests: (q) => req('/requests/open' + (q ? '?q=' + encodeURIComponent(q) : '')),
+  forgot: (email) => req('/auth/forgot', { method: 'POST', body: { email } }),
+  reset: (token, password) => req('/auth/reset', { method: 'POST', body: { token, password } })
 };
 // Probes whether the API is reachable: /auth/me without a token answers
 // 401 when online; a network failure means the backend is down.

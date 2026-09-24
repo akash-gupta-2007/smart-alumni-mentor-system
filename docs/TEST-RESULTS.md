@@ -2,6 +2,8 @@
 
 `npm test` in `backend/`: **17/17 PASS** — matching (3), security incl. SQLi/NoSQL/DoS-shape/password-policy/no-interpolation/reserved-binds/hostile-input (7), workflow transitions + profile/slot validation (7).
 
+Live verification 2026-09-24 (fresh server, Oracle XE): notifications endpoint OK, forgot→reset→login-with-new-password OK (password restored after), request-match writes `MATCH.REQUEST` notification row (spooled), correct-alumni accept OK with bell item, wrong-alumni accept correctly 403, promotion SELECT valid (no waitlisted rows — path code-reviewed).
+
 | Test | Result | Evidence |
 |---|---|---|
 | explainable score prefers fit | PASS | matching.test.js |

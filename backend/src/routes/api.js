@@ -5,7 +5,7 @@ const { auth, allow } = require('../middleware/auth');
 const { v, vId, schemas } = require('../middleware/validate');
 const { rank } = require('../services/matchingService');
 const { detectConflicts } = require('../services/schedulingService');
-const { audit } = require('../middleware/audit');
+const { audit, notify } = require('../middleware/audit');
 const r = express.Router();
 r.use(auth);
 // NOTE (anti-SQLi): every statement below is a constant string with :named binds.
@@ -26,6 +26,32 @@ r.get('/slots/:alumniId', async (req, res) => {
   res.json(rows.map(s => ({ ...s, day_of_week: Number(s.day_of_week), is_blocked: 0 })));
 });
 
+// ---- paging helper: ?q= text search, ?limit= (1-100, default 50), ?offset= ----
+function page(req) {
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 100);
+  const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+  const qstr = typeof req.query.q === 'string' ? req.query.q.slice(0, 80) : '';
+  return { limit, offset, qstr };
+}
+// ---- Notifications bell (own only, newest first) ----
+r.get('/notifications', async (req, res) => {
+  const { limit, offset } = page(req);
+  const unreadOnly = req.query.unread === '1';
+  const rows = await q(`SELECT id, kind, title, body, link, is_read, created_at FROM notifications
+                         WHERE user_id = :who ${unreadOnly ? 'AND is_read = 0' : ''}
+                         ORDER BY created_at DESC OFFSET :off ROWS FETCH NEXT :lim ROWS ONLY`,
+    { who: req.user.id, off: offset, lim: limit });
+  const c = await one('SELECT COUNT(*) AS c FROM notifications WHERE user_id = :who AND is_read = 0', { who: req.user.id });
+  res.json({ unread: Number(c.c), items: rows.map(n => ({ ...n, is_read: Number(n.is_read) })) });
+});
+r.patch('/notifications/:id/read', vId('id'), async (req, res) => {
+  const own = await one('SELECT id FROM notifications WHERE id = :id AND user_id = :who',
+    { id: req.params.id, who: req.user.id });
+  if (!own) return res.status(404).json({ error: 'Notification not found' });
+  await q('UPDATE notifications SET is_read = 1 WHERE id = :id', { id: req.params.id });
+  res.json({ id: req.params.id, read: true });
+});
+
 // ---- Mentorship request (student) ----
 r.post('/requests', allow('student'), v(schemas.request), async (req, res) => {
   const id = uuid();
@@ -37,8 +63,12 @@ r.post('/requests', allow('student'), v(schemas.request), async (req, res) => {
   res.status(201).json({ id, ...b });
 });
 r.get('/requests/open', allow('coordinator', 'admin', 'alumni'), async (req, res) => {
+  const { limit, offset, qstr } = page(req);
   const rows = await q(`SELECT id, student_user_id, title, goal_type, domain, language, status, created_at
-                          FROM mentorship_requests WHERE status = 'open' ORDER BY created_at DESC FETCH FIRST 50 ROWS ONLY`);
+                          FROM mentorship_requests
+                         WHERE status = 'open' ${qstr ? `AND (LOWER(title) LIKE '%' || LOWER(:qstr) || '%' OR LOWER(domain) LIKE '%' || LOWER(:qstr) || '%' OR LOWER(goal_type) LIKE '%' || LOWER(:qstr) || '%')` : ''}
+                         ORDER BY created_at DESC OFFSET :off ROWS FETCH NEXT :lim ROWS ONLY`,
+    qstr ? { qstr, off: offset, lim: limit } : { off: offset, lim: limit });
   res.json(rows);
 });
 
@@ -99,6 +129,9 @@ r.post('/request-match', allow('student'), async (req, res) => {
       st: full ? 'waitlisted' : 'requested'
     });
   await audit(req.user.id, full ? 'MATCH.WAITLISTED' : 'MATCH.REQUESTED', 'matches', id, { request_id, alumni_id }, req.ip);
+  await notify(alumni_id, full ? 'MATCH.WAITLIST' : 'MATCH.REQUEST',
+    full ? 'New waitlist entry' : 'New mentorship request',
+    full ? 'A student joined your waitlist (you are at capacity).' : 'A student requested your mentorship.', '/app');
   res.status(201).json({ id, status: full ? 'waitlisted' : 'requested', capacity: `${Number(active.c)}/${cap.max_mentees}` });
 });
 
@@ -144,15 +177,18 @@ r.put('/profile', v(schemas.profile), async (req, res) => {
 
 // ---- My matches (student sees own, alumni sees incoming; two static queries, no dynamic SQL) ----
 r.get('/matches/mine', async (req, res) => {
+  const { limit, offset, qstr } = page(req);
   const base = `SELECT m.id, m.status, m.score, m.reasons, m.created_at, m.decided_at,
                        u.full_name AS other_name, r2.title AS request_title
                   FROM matches m JOIN users u ON u.id = OTHER_COL
                   JOIN mentorship_requests r2 ON r2.id = m.request_id
-                 WHERE MINE_COL = :who ORDER BY m.created_at DESC FETCH FIRST 50 ROWS ONLY`;
+                 WHERE MINE_COL = :who ${qstr ? `AND (LOWER(u.full_name) LIKE '%' || LOWER(:qstr) || '%' OR LOWER(r2.title) LIKE '%' || LOWER(:qstr) || '%')` : ''}
+                 ORDER BY m.created_at DESC OFFSET :off ROWS FETCH NEXT :lim ROWS ONLY`;
   const sql = req.user.role === 'alumni'
     ? base.replace('OTHER_COL', 'm.student_user_id').replace('MINE_COL', 'm.alumni_user_id')
     : base.replace('OTHER_COL', 'm.alumni_user_id').replace('MINE_COL', 'm.student_user_id');
-  res.json(await q(sql, { who: req.user.id }));
+  const binds = qstr ? { who: req.user.id, qstr, off: offset, lim: limit } : { who: req.user.id, off: offset, lim: limit };
+  res.json(await q(sql, binds));
 });
 
 // ---- Slot edit (alumni owns the slot; time order enforced by Oracle CHECK) ----
@@ -201,7 +237,28 @@ r.patch('/matches/:id', vId('id'), allow('alumni', 'coordinator', 'admin'), asyn
   }
   await q('UPDATE matches SET status = :st, decided_at = SYSTIMESTAMP WHERE id = :id', { st: status, id: req.params.id });
   await audit(req.user.id, 'MATCH.' + status.toUpperCase(), 'matches', req.params.id, { status }, req.ip);
-  res.json({ id: req.params.id, status });
+  const fullRow = await one('SELECT student_user_id, alumni_user_id, request_id FROM matches WHERE id = :id', { id: req.params.id });
+  if (fullRow) {
+    await notify(fullRow.student_user_id, 'MATCH.' + status.toUpperCase(),
+      status === 'accepted' ? 'Mentor accepted your request' : status === 'declined' ? 'Mentor declined your request' : 'Mentorship completed',
+      null, '/app');
+  }
+  // Waitlist promotion: a freed seat goes to the oldest waitlisted match of the same mentor
+  let promoted = null;
+  if ((status === 'declined' || status === 'completed') && fullRow) {
+    const gate = await one('SELECT mentor_sec.fn_capacity_ok(:aid) AS ok FROM DUAL', { aid: fullRow.alumni_user_id });
+    if (gate && Number(gate.ok) === 1) {
+      const next = await one(`SELECT id, student_user_id FROM matches WHERE alumni_user_id = :aid AND status = 'waitlisted'
+                              ORDER BY created_at ASC FETCH FIRST 1 ROWS ONLY`, { aid: fullRow.alumni_user_id });
+      if (next) {
+        await q(`UPDATE matches SET status = 'requested', decided_at = NULL WHERE id = :id AND status = 'waitlisted'`, { id: next.id });
+        await audit(req.user.id, 'MATCH.PROMOTED', 'matches', next.id, { from: 'waitlisted', to: 'requested' }, req.ip);
+        await notify(next.student_user_id, 'MATCH.PROMOTED', 'You moved off the waitlist', 'A mentor seat freed up — your request is now active.', '/app');
+        promoted = next.id;
+      }
+    }
+  }
+  res.json({ id: req.params.id, status, promoted });
 });
 
 // ---- Meetings with conflict detection ----
@@ -220,6 +277,8 @@ r.post('/meetings', v(schemas.meeting), async (req, res) => {
            VALUES (:id, :mid, :st, :et, :mmode, :link, :cby)`,
     { id, mid: b.match_id, st: new Date(b.scheduled_start), et: new Date(b.scheduled_end), mmode: b.mode, link: b.meet_link || null, cby: req.user.id });
   await audit(req.user.id, 'MEETING.SCHEDULED', 'meetings', id, b, req.ip);
+  const other = req.user.id === m.student_user_id ? m.alumni_user_id : m.student_user_id;
+  await notify(other, 'MEETING.SCHEDULED', 'New meeting scheduled', null, '/app');
   res.status(201).json({ id, ...b });
 });
 r.patch('/meetings/:id', vId('id'), async (req, res) => {
@@ -250,13 +309,15 @@ r.patch('/meetings/:id', vId('id'), async (req, res) => {
 
 // ---- My meetings (both roles see matches they belong to) ----
 r.get('/meetings/mine', async (req, res) => {
+  const { limit, offset, qstr } = page(req);
   const rows = await q(`SELECT g.id, g.match_id, g.scheduled_start, g.scheduled_end, g.status,
                                u.full_name AS other_name
                           FROM meetings g JOIN matches m ON m.id = g.match_id
                           JOIN users u ON u.id = CASE WHEN m.student_user_id = :me THEN m.alumni_user_id ELSE m.student_user_id END
-                         WHERE m.student_user_id = :me OR m.alumni_user_id = :me
-                         ORDER BY g.scheduled_start DESC FETCH FIRST 50 ROWS ONLY`,
-    { me: req.user.id });
+                         WHERE (m.student_user_id = :me OR m.alumni_user_id = :me)
+                         ${qstr ? `AND LOWER(u.full_name) LIKE '%' || LOWER(:qstr) || '%'` : ''}
+                         ORDER BY g.scheduled_start DESC OFFSET :off ROWS FETCH NEXT :lim ROWS ONLY`,
+    qstr ? { me: req.user.id, qstr, off: offset, lim: limit } : { me: req.user.id, off: offset, lim: limit });
   res.json(rows);
 });
 
@@ -311,13 +372,18 @@ r.post('/feedback', v(schemas.feedback), async (req, res) => {
     throw e;
   }
   await audit(req.user.id, 'FEEDBACK.SUBMITTED', 'feedback', id, b, req.ip);
+  await notify(toId, 'FEEDBACK.SUBMITTED', 'New meeting rating', `You received a ${b.rating}/5 rating.`, '/app');
   res.status(201).json({ id });
 });
 
 // ---- Coordinator: audit trail (read-only, paged) ----
 r.get('/admin/audit', allow('coordinator', 'admin'), async (req, res) => {
+  const { limit, offset, qstr } = page(req);
   const rows = await q(`SELECT id, actor_user_id, action, entity, entity_id, ip, created_at
-                          FROM audit_logs ORDER BY id DESC FETCH FIRST 100 ROWS ONLY`);
+                          FROM audit_logs
+                         ${qstr ? `WHERE LOWER(action) LIKE '%' || LOWER(:qstr) || '%' OR LOWER(entity) LIKE '%' || LOWER(:qstr) || '%'` : ''}
+                         ORDER BY id DESC OFFSET :off ROWS FETCH NEXT :lim ROWS ONLY`,
+    qstr ? { qstr, off: offset, lim: limit } : { off: offset, lim: limit });
   res.json(rows);
 });
 
