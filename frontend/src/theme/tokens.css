@@ -127,7 +127,7 @@ input, select, textarea { width: 100%; padding: 11px 14px; border-radius: var(--
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-glow); }
 label { font-size: 12px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); display: block; margin: 14px 0 6px; }
 .meter { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; margin-top: 8px; }
-.meter > i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--brand), var(--gold)); border-radius: 99px; transition: width 1s cubic-bezier(.2,.8,.2,1); }
+.meter > i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--brand), var(--gold)); border-radius: 99px; }
 .kpi { font-size: clamp(26px, 3.2vw, 36px); font-weight: 700; font-family: var(--serif); letter-spacing: -0.02em; }
 
 table.tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
