@@ -3,7 +3,6 @@ import Navbar from './components/Navbar.jsx';
 import ScrollToHash from './components/ScrollToHash.jsx';
 import { useReveal } from './components/motion.jsx';
 import { Footer } from './components/MatchCard.jsx';
-import Scene3D from './three/Scene3D.jsx';
 import Landing from './pages/Landing.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
@@ -22,8 +21,6 @@ function Shell() {
   return (
     <BrowserRouter>
       <ScrollToHash />
-      <Scene3D />
-      <div className="veil" aria-hidden="true" />
       <Navbar />
       <main id="main">
         <Routes>

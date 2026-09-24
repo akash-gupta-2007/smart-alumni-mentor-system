@@ -28,7 +28,6 @@
   --ink: #10233f; --muted: #52647c; --line: #d9e4f0;
   --brand: var(--b-500); --brand-deep: var(--b-700); --brand-glow: rgba(37, 99, 235, .16);
   --gold: var(--b-500); --gold-soft: var(--b-700); --gold-glow: rgba(37, 99, 235, .18);
-  --hero-veil: linear-gradient(180deg, rgba(244, 248, 252, .62), rgba(244, 248, 252, .94));
   --card-shadow: var(--shadow-sm);
   --nav-bg: rgba(255, 255, 255, .8);
   color-scheme: light;
@@ -38,7 +37,6 @@
   --ink: #e8eef7; --muted: #97a8bd; --line: #24334d;
   --brand: var(--b-400); --brand-deep: var(--b-600); --brand-glow: rgba(59, 130, 246, .24);
   --gold: var(--b-400); --gold-soft: var(--b-300); --gold-glow: rgba(96, 165, 250, .2);
-  --hero-veil: linear-gradient(180deg, rgba(10, 17, 32, .55), rgba(10, 17, 32, .9));
   --card-shadow: var(--shadow-sm);
   --nav-bg: rgba(10, 17, 32, .8);
   color-scheme: dark;
@@ -154,6 +152,4 @@ button:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important
 .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 22px; }
 .tab-active { box-shadow: inset 0 0 0 1.5px var(--gold) !important; }
 
-canvas.webgl-fixed { position: fixed !important; inset: 0; z-index: -1; }
-.veil { position: fixed; inset: 0; z-index: -1; background: var(--hero-veil); pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .marquee-track { animation: none; } html { scroll-behavior: auto; } }
