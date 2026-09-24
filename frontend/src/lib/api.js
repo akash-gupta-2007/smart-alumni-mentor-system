@@ -26,6 +26,7 @@ async function req(path, opts = {}, retried = false) {
     localStorage.removeItem('mm_token');
     localStorage.removeItem('mm_refresh');
     localStorage.removeItem('mm_user');
+    window.dispatchEvent(new Event('mm:logout'));
     if (!location.pathname.includes('/login')) location.href = '/login';
     throw new Error('Session expired — please log in again');
   }

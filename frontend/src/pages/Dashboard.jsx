@@ -1,13 +1,24 @@
 import { useEffect, useState } from 'react';
 import { api, apiStatus, mockSuggest } from '../lib/api.js';
+import { useAuth } from '../lib/auth.jsx';
 import MatchCard from '../components/MatchCard.jsx';
 import { useReveal } from '../components/motion.jsx';
 
-const TABS = ['matches', 'availability', 'meetings', 'goals', 'feedback', 'profile', 'admin'];
+// UI mirrors backend RBAC exactly: each role only sees tabs its APIs allow.
+const ROLE_TABS = {
+  student: ['matches', 'meetings', 'goals', 'feedback', 'profile'],
+  alumni: ['matches', 'availability', 'meetings', 'feedback', 'profile'],
+  coordinator: ['admin', 'matches', 'profile'],
+  admin: ['admin', 'matches', 'profile']
+};
+const DEFAULT_TAB = { student: 'matches', alumni: 'matches', coordinator: 'admin', admin: 'admin' };
 export default function Dashboard() {
-  useReveal([TABS]);
-  const user = JSON.parse(localStorage.getItem('mm_user') || '{"role":"student","full_name":"Guest"}');
-  const [tab, setTab] = useState('matches');
+  useReveal([]);
+  const { user } = useAuth();
+  const role = user?.role || 'student';
+  const tabs = ROLE_TABS[role] || ROLE_TABS.student;
+  const [tab, setTab] = useState(DEFAULT_TAB[role] || 'matches');
+  useEffect(() => { setTab(DEFAULT_TAB[role] || 'matches'); }, [role]);
   const [req, setReq] = useState({ title: 'DevOps mentorship for placement', goal_type: 'placement', domain: 'DevOps', language: 'English' });
   const [requestId, setRequestId] = useState('');
   const [matches, setMatches] = useState([]);
@@ -76,7 +87,7 @@ export default function Dashboard() {
       <div className="eyebrow rv">Workspace</div>
       <h2 className="rv" style={{ fontSize: 'clamp(28px,4vw,44px)' }}>Namaste, {user.full_name} <span className="chip chip-gold">{user.role}</span> <span className="chip" title="API reachability">{online === 'online' ? '🟢 API live' : online === 'offline' ? '🔴 API offline — demo mode' : '… checking API'}</span></h2>
       {online === 'offline' && <div className="card rv" style={{ borderColor: 'var(--danger)', marginBottom: 14 }}>Backend not reachable. Start it with <b>start-local.bat</b> (or <code>node src/server.js</code> in <code>backend/</code>), then refresh. Meanwhile every tab below still works with built-in demo data.</div>}
-      <div className="tabs rv" role="tablist" aria-label="Workspace sections">{TABS.map(t => <button key={t} role="tab" aria-selected={tab === t} disabled={busy} className={`btn btn-sm ${tab === t ? 'btn-gold tab-active' : 'btn-ghost'}`} onClick={() => setTab(t)}>{t}</button>)}</div>
+      <div className="tabs rv" role="tablist" aria-label="Workspace sections">{tabs.map(t => <button key={t} role="tab" aria-selected={tab === t} disabled={busy} className={`btn btn-sm ${tab === t ? 'btn-gold tab-active' : 'btn-ghost'}`} onClick={() => setTab(t)}>{t}</button>)}</div>
       {busy && <div className="card rv" aria-busy="true" aria-live="polite">Working…</div>}
       {msg && <div className="card rv" style={{ borderColor: 'var(--gold)', marginBottom: 14 }}>{msg}</div>}
 
@@ -322,14 +333,14 @@ export default function Dashboard() {
           </div>
           <div className="card rv" style={{ marginTop: 14 }}>
             <h3>Mentor load — <span style={{ fontWeight: 400, fontSize: 14, color: 'var(--muted)' }}>from v_mentor_load (capacity balance evidence)</span></h3>
-            <table className="tbl"><thead><tr><th>Mentor</th><th>Active</th><th>Cap</th><th>Load</th></tr></thead>
-              <tbody>{(kpis?.mentor_load || []).map((x, i) => <tr key={i}><td>{x.full_name}</td><td>{x.active_mentees}</td><td>{x.max_mentees}</td><td><div className="meter"><i style={{ width: x.load_pct + '%' }} /></div>{x.load_pct}%</td></tr>)}</tbody></table>
+            <div className="tbl-wrap"><table className="tbl"><thead><tr><th>Mentor</th><th>Active</th><th>Cap</th><th>Load</th></tr></thead>
+              <tbody>{(kpis?.mentor_load || []).map((x, i) => <tr key={i}><td>{x.full_name}</td><td>{x.active_mentees}</td><td>{x.max_mentees}</td><td><div className="meter"><i style={{ width: x.load_pct + '%' }} /></div>{x.load_pct}%</td></tr>)}</tbody></table></div>
           </div>
           <div className="card rv" style={{ marginTop: 14 }}>
             <h3>Users — <span style={{ fontWeight: 400, fontSize: 14, color: 'var(--muted)' }}>operate the service</span></h3>
             <label htmlFor="uq">Search email / name</label>
             <input id="uq" placeholder="e.g. alumni" onChange={e => loadUsers(e.target.value)} />
-            <table className="tbl" style={{ marginTop: 8 }}><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Active</th><th>Actions</th></tr></thead>
+            <div className="tbl-wrap"><table className="tbl" style={{ marginTop: 8 }}><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Active</th><th>Actions</th></tr></thead>
               <tbody>{usersList.map(u => (
                 <tr key={u.id}>
                   <td>{u.full_name}</td><td style={{ fontSize: 12 }}>{u.email}</td><td>{u.role}</td><td>{u.is_active ? 'yes' : 'no'}</td>
@@ -338,7 +349,7 @@ export default function Dashboard() {
                     {u.role === 'alumni' && <button className="btn btn-ghost btn-sm" style={{ marginLeft: 6 }} onClick={() => { const cap = window.prompt('New mentee cap (1–20) for ' + u.email + '?'); if (cap) api.adminUserUpdate(u.id, { max_mentees: +cap }).then(() => setMsg('Cap updated')).catch(e => setMsg(e.message)); }}>Set cap</button>}
                   </td>
                 </tr>
-              ))}</tbody></table>
+              ))}</tbody></table></div>
             <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button className="btn btn-ghost btn-sm" onClick={() => api.exportCsv('audit').catch(e => setMsg(e.message))}>⬇ audit.csv</button>
               <button className="btn btn-ghost btn-sm" onClick={() => api.exportCsv('mentor-load').catch(e => setMsg(e.message))}>⬇ mentor-load.csv</button>
@@ -348,8 +359,9 @@ export default function Dashboard() {
             <h3>Audit trail — <span style={{ fontWeight: 400, fontSize: 14, color: 'var(--muted)' }}>append-only (UPDATE/DELETE blocked by trigger)</span></h3>
             <label htmlFor="aq">Search action / entity</label>
             <input id="aq" placeholder="e.g. MATCH.ACCEPTED" onChange={e => api.adminAudit(e.target.value).then(setAuditRows).catch(() => {})} />
-            <table className="tbl"><thead><tr><th>#</th><th>Action</th><th>Entity</th><th>Actor</th><th>Time</th></tr></thead>
-              <tbody>{auditRows.map(a => <tr key={a.id}><td>{a.id}</td><td>{a.action}</td><td>{a.entity}</td><td style={{ fontSize: 12 }}>{a.actor_user_id ? String(a.actor_user_id).slice(0, 8) : '—'}</td><td style={{ fontSize: 12 }}>{new Date(a.created_at).toLocaleString()}</td></tr>)}</tbody></table>
+            <div className="tbl-wrap"><table className="tbl"><thead><tr><th>#</th><th>Action</th><th>Entity</th><th>Actor</th><th>Time</th></tr></thead>
+              <tbody>{auditRows.map(a => <tr key={a.id}><td>{a.id}</td><td>{a.action}</td><td>{a.entity}</td><td style={{ fontSize: 12 }}>{a.actor_user_id ? String(a.actor_user_id).slice(0, 8) : '—'}</td><td style={{ fontSize: 12 }}>{new Date(a.created_at).toLocaleString()}</td></tr>)}</tbody></table></div>
+            {!auditRows.length && <p style={{ color: 'var(--muted)' }}>No audit rows via API (backend offline?) — direct SQL: <code>SELECT * FROM audit_logs ORDER BY id DESC FETCH FIRST 20 ROWS ONLY;</code></p>}
             {!auditRows.length && <p style={{ color: 'var(--muted)' }}>No audit rows via API (backend offline?) — direct SQL: <code>SELECT * FROM audit_logs ORDER BY id DESC FETCH FIRST 20 ROWS ONLY;</code></p>}
           </div>
         </div>

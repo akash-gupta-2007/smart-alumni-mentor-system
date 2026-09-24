@@ -1,25 +1,30 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useTheme } from '../theme/ThemeContext.jsx';
-import { api, clearSession } from '../lib/api.js';
+import { api } from '../lib/api.js';
+import { useAuth } from '../lib/auth.jsx';
+
 function Bell() {
   const [n, setN] = useState({ unread: 0, items: [] });
   const [open, setOpen] = useState(false);
-  const logged = !!localStorage.getItem('mm_token');
+  const { token } = useAuth();
+  const loc = useLocation();
+  useEffect(() => { setOpen(false); }, [loc.pathname]);
   useEffect(() => {
-    if (!logged) return;
+    if (!token) return;
     let stop = false;
     const load = () => api.notif().then(d => { if (!stop) setN(d); }).catch(() => {});
     load();
     const t = setInterval(load, 30000);
     return () => { stop = true; clearInterval(t); };
-  }, [logged]);
-  if (!logged) return null;
+  }, [token]);
+  if (!token) return null;
   return (
     <span style={{ position: 'relative' }}>
-      <button className="btn btn-ghost btn-sm" aria-label="Notifications" onClick={() => setOpen(o => !o)}>🔔{n.unread > 0 && <b style={{ color: 'var(--gold-soft)' }}> {n.unread}</b>}</button>
+      <button className="btn btn-ghost btn-sm" aria-label={`Notifications${n.unread ? `, ${n.unread} unread` : ''}`} aria-expanded={open} onClick={() => setOpen(o => !o)}>🔔{n.unread > 0 && <b style={{ color: 'var(--gold-soft)' }}> {n.unread}</b>}</button>
       {open && (
-        <div className="card" style={{ position: 'absolute', right: 0, top: '110%', width: 300, zIndex: 50, padding: 12 }}>
+        <div className="card" role="menu" aria-label="Notifications" style={{ position: 'absolute', right: 0, top: '110%', width: 300, zIndex: 50, padding: 12 }}>
           {!n.items.length && <p style={{ color: 'var(--muted)', fontSize: 13 }}>No notifications yet.</p>}
           {n.items.map(x => (
             <div key={x.id} style={{ borderBottom: '1px solid var(--line)', padding: '8px 0', opacity: x.is_read ? 0.65 : 1 }}>
@@ -33,35 +38,59 @@ function Bell() {
     </span>
   );
 }
-async function doLogout(nav) {
-  try { await api.logout(); } catch { /* audit best-effort; refresh revoked server-side when reachable */ }
-  clearSession();
-  nav('/');
-}
+
+const linkStyle = ({ isActive }) => ({
+  textDecoration: 'none',
+  fontSize: 14,
+  fontWeight: 600,
+  padding: '8px 13px',
+  borderRadius: 'var(--r-pill)',
+  color: isActive ? 'var(--ink)' : 'var(--muted)',
+  background: isActive ? 'var(--surface2)' : 'transparent',
+  outline: isActive ? '1px solid var(--gold)' : 'none'
+});
+
 export default function Navbar() {
   const { theme, toggle } = useTheme();
+  const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const nav = useNavigate();
-  const user = JSON.parse(localStorage.getItem('mm_user') || 'null');
+  const loc = useLocation();
+  useEffect(() => { setOpen(false); }, [loc.pathname]);
+
+  const goLogout = async () => { await logout(); nav('/'); };
+
   return (
     <div className="nav">
+      <a href="#main" className="btn btn-ghost btn-sm" style={{ position: 'absolute', left: -9999 }} onFocus={e => { e.target.style.left = 8; e.target.style.top = 8; e.target.style.zIndex = 100; }} onBlur={e => { e.target.style.left = -9999; }}>Skip to content</a>
       <div className="nav-inner">
-        <Link to="/" style={{ textDecoration: 'none', fontWeight: 900, fontSize: 21, fontFamily: 'var(--serif)' }}>
-          <span style={{ color: 'var(--brand)' }}>●</span> Mentor<span className="gold-text">Setu</span>
+        <Link to="/" style={{ textDecoration: 'none', fontWeight: 900, fontSize: 21, fontFamily: 'var(--serif)' }} aria-label="MentorSetu home">
+          <span style={{ color: 'var(--brand)' }} aria-hidden="true">●</span> Mentor<span className="gold-text">Setu</span>
         </Link>
         <span className="chip chip-gold">BIT-05 · TRL 4–5</span>
-        <nav className={`nav-links ${open ? 'open' : ''}`}>
-          <Link to="/#how" onClick={() => setOpen(false)}>How it scores</Link>
-          <Link to="/#modules" onClick={() => setOpen(false)}>Modules</Link>
-          <Link to="/#demo" onClick={() => setOpen(false)}>Live demo</Link>
-          <Link to="/app" onClick={() => setOpen(false)}>Workspace</Link>
+        <nav className={`nav-links ${open ? 'open' : ''}`} aria-label="Primary">
+          <NavLink to="/#how" onClick={() => setOpen(false)} style={linkStyle}>How it scores</NavLink>
+          <NavLink to="/#modules" onClick={() => setOpen(false)} style={linkStyle}>Modules</NavLink>
+          <NavLink to="/#demo" onClick={() => setOpen(false)} style={linkStyle}>Live demo</NavLink>
+          {user && <NavLink to="/app" onClick={() => setOpen(false)} style={linkStyle}>Workspace</NavLink>}
         </nav>
-        <button className="btn btn-ghost btn-sm burger" onClick={() => setOpen(o => !o)}>☰</button>
+        <button className="btn btn-ghost btn-sm burger" aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open} onClick={() => setOpen(o => !o)}>☰</button>
         <div className="nav-cta" style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="btn btn-ghost btn-sm" onClick={toggle}>{theme === 'dark' ? '☀ light' : '◐ dark'}</button>
+          <button className="btn btn-ghost btn-sm" onClick={toggle} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>{theme === 'dark' ? '☀ light' : '◐ dark'}</button>
           <Bell />
-          {!user ? (<><button className="btn btn-ghost btn-sm" onClick={() => nav('/login')}>Login</button><button className="btn btn-gold btn-sm" onClick={() => nav('/login?mode=register')}>Join →</button></>)
-            : (<><button className="btn btn-ghost btn-sm" onClick={() => nav('/app')}>{user.full_name} · {user.role}</button><button className="btn btn-ghost btn-sm" onClick={() => doLogout(nav)}>Logout</button></>)}
+          {!user ? (
+            <>
+              <button className="btn btn-ghost btn-sm" onClick={() => nav('/login')}>Login</button>
+              <button className="btn btn-gold btn-sm" onClick={() => nav('/login?mode=register')}>Join →</button>
+            </>
+          ) : (
+            <>
+              <button className="btn btn-ghost btn-sm" onClick={() => nav('/app')} title={`${user.role} workspace`}>
+                {user.full_name} · <span className="gold-text">{user.role}</span>
+              </button>
+              <button className="btn btn-ghost btn-sm" onClick={goLogout}>Logout</button>
+            </>
+          )}
         </div>
       </div>
     </div>

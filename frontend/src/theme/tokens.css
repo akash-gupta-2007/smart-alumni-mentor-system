@@ -76,6 +76,10 @@ label { font-size: 12.5px; font-weight: 700; letter-spacing: .4px; text-transfor
 .kpi { font-size: clamp(26px, 3.4vw, 38px); font-weight: 900; font-family: var(--serif); }
 table.tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
 table.tbl th, table.tbl td { border-bottom: 1px solid var(--line); padding: 10px 8px; text-align: left; }
+.tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tbl-wrap table.tbl { min-width: 560px; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
 .marquee { overflow: hidden; border-block: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 60%, transparent); }
 .marquee-track { display: flex; gap: 40px; padding: 14px 0; white-space: nowrap; animation: slide 26s linear infinite; width: max-content; }
 @keyframes slide { to { transform: translateX(-50%); } }
