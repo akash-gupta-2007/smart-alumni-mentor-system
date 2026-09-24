@@ -66,7 +66,7 @@ export default function Login() {
     <section className="section wrap grid2" style={{ alignItems: 'stretch', minHeight: '70vh' }}>
       <div className="card rv">
         <div className="eyebrow">{mode === 'login' ? 'Welcome back' : mode === 'register' ? 'Join the marketplace' : 'Recover access'}</div>
-        <h2 style={{ fontSize: 38 }}>Mentor<span className="gold-text">Setu</span> access ✦</h2>
+        <h2 style={{ fontSize: 'clamp(30px, 4vw, 40px)', marginTop: 8 }}>Mentor<span className="gold-text">Setu</span> access</h2>
         <div className="tabs" role="tablist" aria-label="Access mode">
           <button role="tab" aria-selected={mode === 'login'} className={`btn btn-sm ${mode === 'login' ? 'btn-gold tab-active' : 'btn-ghost'}`} onClick={() => setMode('login')}>Login</button>
           <button role="tab" aria-selected={mode === 'register'} className={`btn btn-sm ${mode === 'register' ? 'btn-gold tab-active' : 'btn-ghost'}`} onClick={() => setMode('register')}>Register</button>

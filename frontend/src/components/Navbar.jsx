@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useTheme } from '../theme/ThemeContext.jsx';
 import { api } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
+import { IconBell, IconSun, IconMoon, IconMenu, IconLogout, IconArrow, IconLogin } from './Icons.jsx';
 
 function Bell() {
   const [n, setN] = useState({ unread: 0, items: [] });
@@ -21,10 +22,14 @@ function Bell() {
   }, [token]);
   if (!token) return null;
   return (
-    <span style={{ position: 'relative' }}>
-      <button className="btn btn-ghost btn-sm" aria-label={`Notifications${n.unread ? `, ${n.unread} unread` : ''}`} aria-expanded={open} onClick={() => setOpen(o => !o)}>🔔{n.unread > 0 && <b style={{ color: 'var(--gold-soft)' }}> {n.unread}</b>}</button>
+    <span style={{ position: 'relative' }} className="notif-wrap">
+      <button className="nav-icon-btn" aria-label={`Notifications${n.unread ? `, ${n.unread} unread` : ''}`} aria-expanded={open} onClick={() => setOpen(o => !o)}>
+        <IconBell size={18} />
+        {n.unread > 0 && <span className="notif-badge">{n.unread}</span>}
+      </button>
       {open && (
-        <div className="card" role="menu" aria-label="Notifications" style={{ position: 'absolute', right: 0, top: '110%', width: 300, zIndex: 50, padding: 12 }}>
+        <div className="card notif-panel" role="menu" aria-label="Notifications">
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>Notifications</div>
           {!n.items.length && <p style={{ color: 'var(--muted)', fontSize: 13 }}>No notifications yet.</p>}
           {n.items.map(x => (
             <div key={x.id} style={{ borderBottom: '1px solid var(--line)', padding: '8px 0', opacity: x.is_read ? 0.65 : 1 }}>
@@ -38,17 +43,6 @@ function Bell() {
     </span>
   );
 }
-
-const linkStyle = ({ isActive }) => ({
-  textDecoration: 'none',
-  fontSize: 14,
-  fontWeight: 600,
-  padding: '8px 13px',
-  borderRadius: 'var(--r-pill)',
-  color: isActive ? 'var(--ink)' : 'var(--muted)',
-  background: isActive ? 'var(--surface2)' : 'transparent',
-  outline: isActive ? '1px solid var(--gold)' : 'none'
-});
 
 export default function Navbar() {
   const { theme, toggle } = useTheme();
@@ -64,32 +58,32 @@ export default function Navbar() {
     <div className="nav">
       <a href="#main" className="btn btn-ghost btn-sm" style={{ position: 'absolute', left: -9999 }} onFocus={e => { e.target.style.left = 8; e.target.style.top = 8; e.target.style.zIndex = 100; }} onBlur={e => { e.target.style.left = -9999; }}>Skip to content</a>
       <div className="nav-inner">
-        <Link to="/" style={{ textDecoration: 'none', fontWeight: 900, fontSize: 21, fontFamily: 'var(--serif)' }} aria-label="MentorSetu home">
-          <span style={{ color: 'var(--brand)' }} aria-hidden="true">●</span> Mentor<span className="gold-text">Setu</span>
+        <Link to="/" className="nav-brand" aria-label="MentorSetu home">
+          <span className="nav-mark" aria-hidden="true"><span style={{ color: 'var(--gold-100)', fontSize: 13, lineHeight: 1 }}>◆</span></span>
+          Mentor<span className="gold-text">Setu</span>
         </Link>
-        <span className="chip chip-gold">BIT-05 · TRL 4–5</span>
-        <button className="btn btn-ghost btn-sm burger" aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open} onClick={() => setOpen(o => !o)}>☰</button>
+        <button className="btn btn-ghost btn-sm burger nav-icon-btn" aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open} onClick={() => setOpen(o => !o)}><IconMenu size={18} /></button>
         <div className={`nav-menu ${open ? 'open' : ''}`}>
           <nav className="nav-links" aria-label="Primary">
-            <NavLink to="/#how" onClick={() => setOpen(false)} style={linkStyle}>How it scores</NavLink>
-            <NavLink to="/#modules" onClick={() => setOpen(false)} style={linkStyle}>Modules</NavLink>
-            <NavLink to="/#demo" onClick={() => setOpen(false)} style={linkStyle}>Live demo</NavLink>
-            {user && <NavLink to="/app" onClick={() => setOpen(false)} style={linkStyle}>Workspace</NavLink>}
+            <NavLink to="/#how" onClick={() => setOpen(false)}>How it scores</NavLink>
+            <NavLink to="/#modules" onClick={() => setOpen(false)}>Modules</NavLink>
+            <NavLink to="/#saas" onClick={() => setOpen(false)}>Plans</NavLink>
+            {user && <NavLink to="/app" onClick={() => setOpen(false)}>Workspace</NavLink>}
           </nav>
           <div className="nav-cta">
-            <button className="btn btn-ghost btn-sm" onClick={toggle} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>{theme === 'dark' ? '☀ light' : '◐ dark'}</button>
+            <button className="nav-icon-btn" onClick={toggle} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>{theme === 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}</button>
             <Bell />
             {!user ? (
               <>
-                <button className="btn btn-ghost btn-sm" onClick={() => { setOpen(false); nav('/login'); }}>Login</button>
-                <button className="btn btn-gold btn-sm" onClick={() => { setOpen(false); nav('/login?mode=register'); }}>Join →</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => { setOpen(false); nav('/login'); }}><IconLogin size={15} /> Login</button>
+                <button className="btn btn-gold btn-sm" onClick={() => { setOpen(false); nav('/login?mode=register'); }}>Join <IconArrow size={14} /></button>
               </>
             ) : (
               <>
                 <button className="btn btn-ghost btn-sm" onClick={() => { setOpen(false); nav('/app'); }} title={`${user.role} workspace`}>
-                  {user.full_name} · <span className="gold-text">{user.role}</span>
+                  <span className="chip chip-live" style={{ margin: 0 }}>{user.full_name} · {user.role}</span>
                 </button>
-                <button className="btn btn-ghost btn-sm" onClick={goLogout}>Logout</button>
+                <button className="btn btn-ghost btn-sm" onClick={goLogout}><IconLogout size={15} /> Logout</button>
               </>
             )}
           </div>

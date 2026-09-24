@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, apiStatus, mockSuggest } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 import MatchCard from '../components/MatchCard.jsx';
+import { IconDownload } from '../components/Icons.jsx';
 import { useReveal } from '../components/motion.jsx';
 
 // UI mirrors backend RBAC exactly: each role only sees tabs its APIs allow.
@@ -85,7 +86,7 @@ export default function Dashboard() {
   return (
     <section className="section wrap">
       <div className="eyebrow rv">Workspace</div>
-      <h2 className="rv" style={{ fontSize: 'clamp(28px,4vw,44px)' }}>Namaste, {user.full_name} <span className="chip chip-gold">{user.role}</span> <span className="chip" title="API reachability">{online === 'online' ? '🟢 API live' : online === 'offline' ? '🔴 API offline — demo mode' : '… checking API'}</span></h2>
+      <h2 className="rv" style={{ fontSize: 'clamp(27px, 3.8vw, 40px)' }}>Namaste, {user.full_name} <span className="chip chip-gold">{user.role}</span> <span className={`chip ${online === 'online' ? 'chip-live' : online === 'offline' ? 'chip-danger' : ''}`} title="API reachability"><i className="dot" aria-hidden="true" /> {online === 'online' ? 'API live' : online === 'offline' ? 'API offline — demo mode' : '… checking API'}</span></h2>
       {online === 'offline' && <div className="card rv" style={{ borderColor: 'var(--danger)', marginBottom: 14 }}>Backend not reachable. Start it with <b>start-local.bat</b> (or <code>node src/server.js</code> in <code>backend/</code>), then refresh. Meanwhile every tab below still works with built-in demo data.</div>}
       <div className="tabs rv" role="tablist" aria-label="Workspace sections">{tabs.map(t => <button key={t} role="tab" aria-selected={tab === t} disabled={busy} className={`btn btn-sm ${tab === t ? 'btn-gold tab-active' : 'btn-ghost'}`} onClick={() => setTab(t)}>{t}</button>)}</div>
       {busy && <div className="card rv" aria-busy="true" aria-live="polite">Working…</div>}
@@ -127,7 +128,7 @@ export default function Dashboard() {
             <input value={freeDays} placeholder="1,3,5" onChange={e => setFreeDays(e.target.value)} />
             <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button className="btn btn-green btn-sm" onClick={createReq}>Create request</button>
-              <button className="btn btn-gold btn-sm" onClick={suggest}>✨ Suggest Top-3</button>
+              <button className="btn btn-gold btn-sm" onClick={suggest}>Suggest Top-3</button>
             </div>
             {requestId && <p style={{ color: 'var(--muted)', fontSize: 13 }}>request_id: {requestId}</p>}
             <p style={{ color: 'var(--muted)', fontSize: 13 }}>Innovation: full mentors never vanish — they flip to <b>waitlist</b> with the same explanation payload.</p>
@@ -168,8 +169,8 @@ export default function Dashboard() {
                   </span>
                 ) : (
                   <span>Day {s.day_of_week} · {s.start_time}–{s.end_time}
-                    <button className="btn btn-ghost btn-sm" aria-label="Edit slot" style={{ padding: '2px 8px', marginLeft: 6 }} onClick={() => setEditSlot(s.id)}>✎</button>
-                    <button className="btn btn-ghost btn-sm" aria-label="Delete slot" style={{ padding: '2px 8px', marginLeft: 6 }} onClick={() => { if (window.confirm('Delete this slot?')) api.slotDel(s.id).then(loadSlots).catch(e => setMsg(e.message)); }}>✕</button>
+                    <button className="btn btn-ghost btn-sm" aria-label="Edit slot" style={{ padding: '2px 8px', marginLeft: 6 }} onClick={() => setEditSlot(s.id)}>Edit</button>
+                    <button className="btn btn-ghost btn-sm" aria-label="Delete slot" style={{ padding: '2px 8px', marginLeft: 6 }} onClick={() => { if (window.confirm('Delete this slot?')) api.slotDel(s.id).then(loadSlots).catch(e => setMsg(e.message)); }}>Delete</button>
                   </span>
                 )}
               </span>
@@ -351,8 +352,8 @@ export default function Dashboard() {
                 </tr>
               ))}</tbody></table></div>
             <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button className="btn btn-ghost btn-sm" onClick={() => api.exportCsv('audit').catch(e => setMsg(e.message))}>⬇ audit.csv</button>
-              <button className="btn btn-ghost btn-sm" onClick={() => api.exportCsv('mentor-load').catch(e => setMsg(e.message))}>⬇ mentor-load.csv</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => api.exportCsv('audit').catch(e => setMsg(e.message))}><IconDownload size={14} /> audit.csv</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => api.exportCsv('mentor-load').catch(e => setMsg(e.message))}><IconDownload size={14} /> mentor-load.csv</button>
             </div>
           </div>
           <div className="card rv" style={{ marginTop: 14 }}>
@@ -361,7 +362,6 @@ export default function Dashboard() {
             <input id="aq" placeholder="e.g. MATCH.ACCEPTED" onChange={e => api.adminAudit(e.target.value).then(setAuditRows).catch(() => {})} />
             <div className="tbl-wrap"><table className="tbl"><thead><tr><th>#</th><th>Action</th><th>Entity</th><th>Actor</th><th>Time</th></tr></thead>
               <tbody>{auditRows.map(a => <tr key={a.id}><td>{a.id}</td><td>{a.action}</td><td>{a.entity}</td><td style={{ fontSize: 12 }}>{a.actor_user_id ? String(a.actor_user_id).slice(0, 8) : '—'}</td><td style={{ fontSize: 12 }}>{new Date(a.created_at).toLocaleString()}</td></tr>)}</tbody></table></div>
-            {!auditRows.length && <p style={{ color: 'var(--muted)' }}>No audit rows via API (backend offline?) — direct SQL: <code>SELECT * FROM audit_logs ORDER BY id DESC FETCH FIRST 20 ROWS ONLY;</code></p>}
             {!auditRows.length && <p style={{ color: 'var(--muted)' }}>No audit rows via API (backend offline?) — direct SQL: <code>SELECT * FROM audit_logs ORDER BY id DESC FETCH FIRST 20 ROWS ONLY;</code></p>}
           </div>
         </div>
