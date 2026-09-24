@@ -1,4 +1,24 @@
 const API = '/api';
+// Single-flight refresh: parallel 401s (tab switch fires several API calls at
+// once) must share ONE rotation. Refresh tokens are one-time-use server-side,
+// so firing N concurrent refreshes revokes N-1 of them and logs the user out.
+let refreshPromise = null;
+function doRefresh() {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      const rr = await fetch(API + '/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: localStorage.getItem('mm_refresh') })
+      });
+      const dd = await rr.json().catch(() => ({}));
+      if (!rr.ok || !dd.token) throw new Error(dd.error || 'refresh failed');
+      localStorage.setItem('mm_token', dd.token);
+      if (dd.refreshToken) localStorage.setItem('mm_refresh', dd.refreshToken);
+    })().finally(() => { refreshPromise = null; });
+  }
+  return refreshPromise;
+}
 async function req(path, opts = {}, retried = false) {
   const token = localStorage.getItem('mm_token');
   const r = await fetch(API + path, {
@@ -8,21 +28,12 @@ async function req(path, opts = {}, retried = false) {
   });
   if (r.status === 401 && !retried && !path.startsWith('/auth/') && localStorage.getItem('mm_refresh')) {
     // SaaS sessions: silently rotate once before giving up
-    try {
-      const rr = await fetch(API + '/auth/refresh', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: localStorage.getItem('mm_refresh') })
-      });
-      const dd = await rr.json().catch(() => ({}));
-      if (rr.ok && dd.token) {
-        localStorage.setItem('mm_token', dd.token);
-        localStorage.setItem('mm_refresh', dd.refreshToken);
-        return req(path, opts, true);
-      }
-    } catch { /* fall through to logout */ }
+    try { await doRefresh(); return req(path, opts, true); }
+    catch { /* fall through to logout */ }
   }
-  if (r.status === 401 && localStorage.getItem('mm_token')) {
+  // Genuine expiry only: /auth/* failures (bad login, spent reset token, …)
+  // are returned as errors, never treated as logout.
+  if (r.status === 401 && !path.startsWith('/auth/') && localStorage.getItem('mm_token')) {
     localStorage.removeItem('mm_token');
     localStorage.removeItem('mm_refresh');
     localStorage.removeItem('mm_user');

@@ -1,6 +1,6 @@
-# MentorSetu — BIT-05 (Oracle SQL*Plus + Node + React + Three.js)
+# MentorSetu — BIT-05 (Oracle SQL*Plus + Node + React)
 
-Explainable, capacity-aware alumni-mentor marketplace. Green / White / Gold, dark + light, 3D animated, scrollable, responsive. Hardened against SQL injection + common web attacks.
+Explainable, capacity-aware alumni-mentor marketplace. Light bluish professional UI, dark + light, static (no animations), responsive. Hardened against SQL injection + common web attacks.
 
 Docs hub: `docs/` (gap analysis, architecture, matching algorithm, API, security, privacy, tests, baseline, robustness, deployment, troubleshooting, readiness). Machine API spec: `openapi.yaml`.
 
@@ -11,11 +11,15 @@ Double-click **`start-local.bat`** — API (`:4000`) + UI (`:5173`, browser auto
 sqlplus system/admin@//localhost:1521/XEPDB1
 ```
 
-## 2. Database — Oracle via SQL*Plus (robust relational + PL/SQL)
+## 1. Database — Oracle via SQL*Plus (robust relational + PL/SQL)
 ```bash
 sqlplus system/admin@//localhost:1521/XEPDB1 @db/oracle_schema.sql
 sqlplus system/admin@//localhost:1521/XEPDB1 @db/oracle_seed.sql
 sqlplus system/admin@//localhost:1521/XEPDB1 @db/migrate_02_feedback.sql
+sqlplus system/admin@//localhost:1521/XEPDB1 @db/migrate_03_notifications.sql
+sqlplus system/admin@//localhost:1521/XEPDB1 @db/migrate_04_password_reset.sql
+sqlplus system/admin@//localhost:1521/XEPDB1 @db/migrate_05_sessions.sql
+sqlplus system/admin@//localhost:1521/XEPDB1 @db/migrate_06_refresh_unique.sql
 ```
 - 12 tables (users, student/alumni profiles, slots, requests, matches, meetings, logs, goals, feedback, append-only `audit_logs`, `login_attempts`) + `v_mentor_load` view
 - PL/SQL package `mentor_sec`: lockout counter, capacity gate, autonomous-txn audit writer
@@ -23,14 +27,14 @@ sqlplus system/admin@//localhost:1521/XEPDB1 @db/migrate_02_feedback.sql
 - Least privilege: app connects as `mentor_app` (DML-only grants, no DDL, never SYSTEM)
 - Demo logins (pw `Password123!`): `student1@college.edu`, `alumni1@example.com`, `coordinator@college.edu`
 
-## 3. Backend (strong logic + anti-hack)
+## 2. Backend (strong logic + anti-hack)
 ```bash
 cd backend
-copy .env.example .env   # set DB_PASSWORD + 32+ char JWT_SECRET
+copy .env.example .env   # set DB_PASSWORD + 32+ char JWT_SECRET (ACCESS_EXPIRES/REFRESH_EXPIRES optional, default 15m/30d)
 npm install
-npm test                 # matching + capacity + conflicts + SQLi/validation/static-SQL-scan
+npm test                 # matching + capacity + conflicts + SQLi/validation/static-SQL-scan (18/18)
 npm run seed             # 32-user synthetic set (needs Oracle up)
-npm start                # :4000 | /health | /metrics
+npm start                # :4000 | /health | /ready | /version | /metrics
 ```
 Security layers:
 1. **SQL injection impossible by construction** — oracledb bind variables only (`:email`), static test scans `src/` for `${}` inside SQL and fails the build
@@ -42,25 +46,27 @@ Security layers:
 
 Core engine `matchingService.js`: `0.40 domain(Jaccard)+0.25 goal+0.15 lang+0.20 availability`, penalty `0.3×load`, full→waitlist with reasons. Scheduler rejects `OVERLAP/PAST_DATE/OUTSIDE_AVAILABILITY` (409) + Oracle CHECKs back it up.
 
-## 4. Frontend (unchanged 3D build)
+## 3. Frontend (static light-blue build)
 ```bash
 cd frontend
 npm install
 npm run dev   # :5173, proxies /api → :4000
 ```
+Phone/LAN test (same Wi-Fi): run `npx vite --host` in `frontend/` instead, then open `http://<PC-LAN-IP>:5173` on the phone. `localhost` on a phone means the phone itself.
 
-## 5. Acceptance evidence
-- `npm test` green (incl. security suite), satisfaction ≥4/5, load std-dev <25%, conflicts <5%, RBAC 100%, p95 <500ms
-- Failure drills: stop Oracle → `/health` shows `db: down`, API returns safe 500s; double-book → 409; audit UPDATE attempt → ORA-20001
+## 4. Acceptance evidence
+- `npm test` green 18/18 (incl. security suite), satisfaction ≥4/5, load std-dev <25%, conflicts <5%, RBAC 100%, p95 <500ms
+- Failure drills: stop Oracle → `/health` shows `db: down`, `/ready` → 503, API returns safe 500s; double-book → 409; audit UPDATE attempt → ORA-20001
+- Responsive DOM verified at 320 / 375 / 430 / 768 / 1024 / 1280 / 1440px (hero + nav render, no canvas)
 
-## 6. Structure
+## 5. Structure
 ```
-database/setup.sql           (SQL*Plus run order: schema → seed → migrate_02)
-db/oracle_schema.sql, db/oracle_seed.sql, db/migrate_02_feedback.sql, db/verify_queries.sql
+database/setup.sql           (SQL*Plus run order: schema → seed → migrate_02..06)
+db/oracle_schema.sql, db/oracle_seed.sql, db/migrate_02_feedback.sql, db/migrate_03_notifications.sql, db/migrate_04_password_reset.sql, db/migrate_05_sessions.sql, db/migrate_06_refresh_unique.sql, db/verify_queries.sql
 backend/src/{server,app,config/db,middleware/{auth,audit,validate},routes/{auth,api},services/{matchingService,schedulingService,workflow},seed}
-backend/tests/{matching.test.js, security.test.js, workflow.test.js}   (17/17 green)
+backend/tests/{matching.test.js, security.test.js, workflow.test.js}   (18/18 green)
 backend/scripts/baseline-compare.js
-frontend/src/{App,main,theme,lib/api,three/Scene3D,components,pages}
+frontend/src/{App,main,theme,lib/{api,auth},components,pages}
 docs/{BIT05-GAP-ANALYSIS,MATCHING-ALGORITHM,API-DOCUMENTATION,SECURITY,PRIVACY-AND-DATA-HANDLING,TEST-RESULTS,BASELINE-COMPARISON,FAILURE-ROBUSTNESS-TEST,SYSTEM-CARD,SYSTEM-ARCHITECTURE,DATABASE-DESIGN,THREAT-MODEL,DEPLOYMENT,TROUBLESHOOTING,FINAL-READINESS-REPORT}.md
 openapi.yaml   (served at /openapi.yaml)
 ```

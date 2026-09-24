@@ -49,7 +49,7 @@ export function AuthProvider({ children }) {
     setAuth(blank);
   }, []);
 
-  return <AuthCtx.Provider value={{ ...auth, login, register, logout }}>{children}</AuthCtx.Provider>;
+  return <AuthCtx.Provider value={{ ...auth, loading: false, login, register, logout }}>{children}</AuthCtx.Provider>;
 }
 
 export const useAuth = () => useContext(AuthCtx);

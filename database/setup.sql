@@ -4,11 +4,15 @@
 --   sqlplus system/admin@//localhost:1521/XEPDB1 @db/oracle_schema.sql
 --   sqlplus system/admin@//localhost:1521/XEPDB1 @db/oracle_seed.sql
 --   sqlplus system/admin@//localhost:1521/XEPDB1 @db/migrate_02_feedback.sql
+--   sqlplus system/admin@//localhost:1521/XEPDB1 @db/migrate_03_notifications.sql
+--   sqlplus system/admin@//localhost:1521/XEPDB1 @db/migrate_04_password_reset.sql
+--   sqlplus system/admin@//localhost:1521/XEPDB1 @db/migrate_05_sessions.sql
+--   sqlplus system/admin@//localhost:1521/XEPDB1 @db/migrate_06_refresh_unique.sql
 --
 -- Verify with:
 --   sqlplus system/admin@//localhost:1521/XEPDB1 @db/verify_queries.sql
 --   sqlplus system/admin@//localhost:1521/XEPDB1 @evidence/database/verify.sql
 --
--- Reset = re-run oracle_schema.sql (it drops objects first), then seed + migration.
+-- Reset = re-run oracle_schema.sql (it drops objects first), then seed + migrations 02–06.
 -- Demo logins (password Password123!): student1@college.edu, alumni1@example.com,
 -- coordinator@college.edu. All data is synthetic.

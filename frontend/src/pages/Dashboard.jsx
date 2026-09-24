@@ -127,8 +127,8 @@ export default function Dashboard() {
             <label>My free days (0=Sun..6=Sat, comma list)</label>
             <input value={freeDays} placeholder="1,3,5" onChange={e => setFreeDays(e.target.value)} />
             <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button className="btn btn-green btn-sm" onClick={createReq}>Create request</button>
-              <button className="btn btn-gold btn-sm" onClick={suggest}>Suggest Top-3</button>
+              <button className="btn btn-green btn-sm" disabled={busy} onClick={createReq}>Create request</button>
+              <button className="btn btn-gold btn-sm" disabled={busy} onClick={suggest}>Suggest Top-3</button>
             </div>
             <p style={{ color: 'var(--muted)', fontSize: 13 }}>Innovation: full mentors never vanish — they flip to <b>waitlist</b> with the same explanation payload.</p>
           </div>

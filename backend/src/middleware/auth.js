@@ -1,5 +1,9 @@
 const jwt = require('jsonwebtoken');
-const SECRET = () => process.env.JWT_SECRET || 'dev_secret_change_me_32_chars_min';
+const SECRET = () => {
+  const s = process.env.JWT_SECRET || '';
+  if (process.env.NODE_ENV === 'production' && s.length < 32) throw new Error('JWT_SECRET must be 32+ chars in production');
+  return s || 'dev_secret_change_me_32_chars_min';
+};
 // Short-lived access tokens (SaaS default 15m) + long-lived refresh tokens (30d, rotated server-side).
 function sign(user) {
   return jwt.sign({ id: user.id, role: user.role, email: user.email }, SECRET(), { expiresIn: process.env.ACCESS_EXPIRES || '15m' });
