@@ -42,11 +42,17 @@ test('oversized + malformed bodies rejected (DoS / buffer abuse)', () => {
 });
 
 test('password policy enforced (10+ chars, upper+lower+digit)', () => {
-  assert.ok(check(schemas.register, { email: 'a@b.com', password: 'Password123!', full_name: 'Test User', role: 'student' }).error === undefined);
+  assert.ok(check(schemas.register, { email: 'a@b.com', password: 'Password123!', full_name: 'Test User', role: 'student', consent: true }).error === undefined);
   for (const bad of ['short1Aa', 'alllowercase123', 'ALLUPPER123', 'NoDigitsHere!']) {
-    const { error } = check(schemas.register, { email: 'a@b.com', password: bad, full_name: 'Test User', role: 'student' });
+    const { error } = check(schemas.register, { email: 'a@b.com', password: bad, full_name: 'Test User', role: 'student', consent: true });
     assert.ok(error, `weak password accepted: ${bad}`);
   }
+});
+test('explicit data-consent required at registration', () => {
+  const { error: missing } = check(schemas.register, { email: 'a@b.com', password: 'Password123!', full_name: 'Test User', role: 'student' });
+  assert.ok(missing, 'registration without consent must fail');
+  const { error: refused } = check(schemas.register, { email: 'a@b.com', password: 'Password123!', full_name: 'Test User', role: 'student', consent: false });
+  assert.ok(refused, 'consent=false must fail');
 });
 
 // --- 2. Static guard: no string-interpolated SQL anywhere in backend ---

@@ -15,9 +15,10 @@ paths:
   /api/auth/logout: { post: { responses: { '200': { description: audited logout } } } }
   /api/auth/forgot: { post: { security: [], responses: { '200': { description: always ok, demo token } } } }
   /api/auth/reset: { post: { security: [], responses: { '200': { description: password changed }, '400': { description: bad token/password } } } }
+  /api/auth/refresh: { post: { security: [], responses: { '200': { description: rotated pair }, '401': { description: invalid } } } }
   /api/notifications: { get: { responses: { '200': { description: '{unread, items[]}' } } } }
   /api/notifications/{id}/read: { patch: { responses: { '200': { description: marked read }, '404': { description: missing } } } }
-  /api/profile: { get: { responses: { '200': { description: own user + role profile } } }, put: { requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { full_name: { type: string }, languages: { type: array }, bio: { type: string }, max_mentees: { type: integer } } } } } }, responses: { '200': { description: updated } } } }
+  /api/profile: { get: { responses: { '200': { description: own user + role profile } } }, put: { requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { full_name: { type: string }, languages: { type: array }, bio: { type: string }, max_mentees: { type: integer } } } } } }, responses: { '200': { description: updated } } }, delete: { description: self-deactivate (privacy), responses: { '200': { description: deactivated } } } }
   /api/requests: { post: { description: 'STUDENT: create mentorship request', responses: { '201': { description: request }, '403': { description: wrong role } } } }
   /api/requests/open: { get: { description: 'ALUMNI/COORDINATOR: open requests', responses: { '200': { description: list } } } }
   /api/suggest/{id}: { get: { parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }], responses: { '200': { description: 'Top-5 Match[]', content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Match' } } } } }, '403': { description: not owner }, '404': { description: no request } } } }
@@ -33,4 +34,10 @@ paths:
   /api/goals/{id}: { patch: { responses: { '200': { description: updated } } }, delete: { responses: { '200': { description: deleted }, '404': { description: missing } } } }
   /api/feedback: { post: { responses: { '201': { description: rated }, '409': { description: duplicate } } } }
   /api/admin/kpis: { get: { description: 'COORDINATOR', responses: { '200': { description: satisfaction, load, conflicts }, '403': { description: wrong role } } } }
-  /api/admin/audit: { get: { description: 'COORDINATOR: latest 100 audit rows', responses: { '200': { description: list } } } }
+  /api/admin/audit: { get: { description: 'COORDINATOR: latest audit rows, searchable', responses: { '200': { description: list } } } }
+  /api/admin/users: { get: { description: 'COORDINATOR: user list, searchable', responses: { '200': { description: list } } } }
+  /api/admin/users/{id}: { patch: { description: 'COORDINATOR: activate/deactivate, set mentor cap', responses: { '200': { description: updated }, '400': { description: bad value/self-edit }, '404': { description: missing } } } }
+  /api/admin/export/audit: { get: { description: 'COORDINATOR: audit CSV', responses: { '200': { description: csv } } } }
+  /api/admin/export/mentor-load: { get: { description: 'COORDINATOR: load CSV', responses: { '200': { description: csv } } } }
+  /ready: { get: { security: [], responses: { '200': { description: ready }, '503': { description: db down } } } }
+  /version: { get: { security: [], responses: { '200': { description: name + version } } } }

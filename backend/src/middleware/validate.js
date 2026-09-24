@@ -25,7 +25,9 @@ const schemas = {
     password: PW.required(),
     full_name: Joi.string().min(2).max(120).required(),
     role: Joi.string().valid('student', 'alumni').required(),
-    languages: Joi.array().items(Joi.string().max(30)).max(5).default(['English'])
+    languages: Joi.array().items(Joi.string().max(30)).max(5).default(['English']),
+    consent: Joi.boolean().valid(true).required()
+      .messages({ 'any.only': 'Please accept the data-consent to join' })
   }),
   login: Joi.object({ email: Joi.string().email().max(191).required(), password: Joi.string().max(128).required() }),
   request: Joi.object({

@@ -48,6 +48,18 @@ app.get('/health', async (req, res) => {
   const { ping } = require('./config/db');
   res.json({ ok: true, db: (await ping()) ? 'up' : 'down', time: new Date().toISOString() });
 });
+// Readiness probe for orchestrators/load-balancers: 503 until Oracle is reachable.
+app.get('/ready', async (req, res) => {
+  const { ping } = require('./config/db');
+  if (await ping()) return res.json({ ready: true });
+  res.status(503).json({ ready: false, db: 'down' });
+});
+app.get('/version', (req, res) => {
+  try {
+    const pkg = require('../package.json');
+    res.json({ name: pkg.name, version: pkg.version });
+  } catch { res.json({ name: 'mentor-market-backend', version: 'unknown' }); }
+});
 app.get('/metrics', async (req, res) => {
   res.set('Content-Type', client.register.contentType);
   res.send(await client.register.metrics());

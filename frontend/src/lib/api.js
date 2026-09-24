@@ -1,13 +1,30 @@
 const API = '/api';
-async function req(path, opts = {}) {
+async function req(path, opts = {}, retried = false) {
   const token = localStorage.getItem('mm_token');
   const r = await fetch(API + path, {
     ...opts,
     headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}), ...(opts.headers || {}) },
     body: opts.body ? JSON.stringify(opts.body) : undefined
   });
+  if (r.status === 401 && !retried && !path.startsWith('/auth/') && localStorage.getItem('mm_refresh')) {
+    // SaaS sessions: silently rotate once before giving up
+    try {
+      const rr = await fetch(API + '/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: localStorage.getItem('mm_refresh') })
+      });
+      const dd = await rr.json().catch(() => ({}));
+      if (rr.ok && dd.token) {
+        localStorage.setItem('mm_token', dd.token);
+        localStorage.setItem('mm_refresh', dd.refreshToken);
+        return req(path, opts, true);
+      }
+    } catch { /* fall through to logout */ }
+  }
   if (r.status === 401 && localStorage.getItem('mm_token')) {
     localStorage.removeItem('mm_token');
+    localStorage.removeItem('mm_refresh');
     localStorage.removeItem('mm_user');
     if (!location.pathname.includes('/login')) location.href = '/login';
     throw new Error('Session expired — please log in again');
@@ -20,7 +37,8 @@ export const api = {
   register: (b) => req('/auth/register', { method: 'POST', body: b }),
   login: (b) => req('/auth/login', { method: 'POST', body: b }),
   me: () => req('/auth/me'),
-  logout: () => req('/auth/logout', { method: 'POST' }),
+  logout: () => req('/auth/logout', { method: 'POST', body: { refreshToken: localStorage.getItem('mm_refresh') } }),
+  refresh: () => req('/auth/refresh', { method: 'POST', body: { refreshToken: localStorage.getItem('mm_refresh') } }),
   profile: () => req('/profile'),
   profileUpdate: (b) => req('/profile', { method: 'PUT', body: b }),
   openRequests: () => req('/requests/open'),
@@ -38,6 +56,16 @@ export const api = {
   goals: () => req('/goals'),
   goalUpdate: (id, b) => req('/goals/' + id, { method: 'PATCH', body: b }),
   goalDel: (id) => req('/goals/' + id, { method: 'DELETE' }),
+  profileDel: () => req('/profile', { method: 'DELETE' }),
+  adminUsers: (q) => req('/admin/users' + (q ? '?q=' + encodeURIComponent(q) : '')),
+  adminUserUpdate: (id, b) => req('/admin/users/' + id, { method: 'PATCH', body: b }),
+  exportCsv: (which) => fetch('/api/admin/export/' + which, { headers: { Authorization: 'Bearer ' + localStorage.getItem('mm_token') } }).then(r => { if (!r.ok) throw new Error('Export failed'); return r.blob(); }).then(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = which + '.csv';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }),
   feedback: (b) => req('/feedback', { method: 'POST', body: b }),
   kpis: () => req('/admin/kpis'),
   mine: () => req('/matches/mine'),
@@ -51,6 +79,15 @@ export const api = {
 };
 // Probes whether the API is reachable: /auth/me without a token answers
 // 401 when online; a network failure means the backend is down.
+export function saveSession(r) {
+  localStorage.setItem('mm_token', r.token);
+  if (r.refreshToken) localStorage.setItem('mm_refresh', r.refreshToken);
+}
+export function clearSession() {
+  localStorage.removeItem('mm_token');
+  localStorage.removeItem('mm_refresh');
+  localStorage.removeItem('mm_user');
+}
 export async function apiStatus() {
   try {
     await fetch(API + '/auth/me', { headers: { 'Content-Type': 'application/json' } });

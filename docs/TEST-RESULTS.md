@@ -3,6 +3,7 @@
 `npm test` in `backend/`: **17/17 PASS** — matching (3), security incl. SQLi/NoSQL/DoS-shape/password-policy/no-interpolation/reserved-binds/hostile-input (7), workflow transitions + profile/slot validation (7).
 
 Live verification 2026-09-24 (fresh server, Oracle XE): notifications endpoint OK, forgot→reset→login-with-new-password OK (password restored after), request-match writes `MATCH.REQUEST` notification row (spooled), correct-alumni accept OK with bell item, wrong-alumni accept correctly 403, promotion SELECT valid (no waitlisted rows — path code-reviewed).
+2026-09-24 SaaS pass: refresh rotation verified (new token differs, old-token reuse → 401, chained refresh OK). **Bug found live:** pre-`jti` refresh JWTs minted in the same second were byte-identical, defeating rotation — fixed with `jti` nonce + unique hash index (`migrate_06`), temp test users removed. Ready/version probes, consent-required register, self-erasure (register→deactivate→login-blocked), admin users search + deactivate + cap, CSV exports all live-verified.
 
 | Test | Result | Evidence |
 |---|---|---|

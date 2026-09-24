@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTheme } from '../theme/ThemeContext.jsx';
-import { api } from '../lib/api.js';
+import { api, clearSession } from '../lib/api.js';
 function Bell() {
   const [n, setN] = useState({ unread: 0, items: [] });
   const [open, setOpen] = useState(false);
@@ -34,9 +34,8 @@ function Bell() {
   );
 }
 async function doLogout(nav) {
-  try { await api.logout(); } catch { /* audit best-effort; token is client-side */ }
-  localStorage.removeItem('mm_token');
-  localStorage.removeItem('mm_user');
+  try { await api.logout(); } catch { /* audit best-effort; refresh revoked server-side when reachable */ }
+  clearSession();
   nav('/');
 }
 export default function Navbar() {

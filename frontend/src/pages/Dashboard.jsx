@@ -32,6 +32,8 @@ export default function Dashboard() {
   const [openReq, setOpenReq] = useState([]);
   const [prof, setProf] = useState(null);
   const [editSlot, setEditSlot] = useState(null);
+  const [usersList, setUsersList] = useState([]);
+  const loadUsers = (q) => api.adminUsers(q).then(setUsersList).catch(() => setUsersList([]));
   const loadOpen = (q) => api.openRequests(q).then(setOpenReq).catch(() => setOpenReq([]));
   const loadProf = () => api.profile().then(setProf).catch(() => setProf(null));
   const loadSlots = () => { if (user.id) api.slots(user.id).then(setMySlots).catch(() => setMySlots([])); };
@@ -60,7 +62,7 @@ export default function Dashboard() {
     if (tab === 'meetings') loadMeets();
     if (tab === 'goals') loadGoals();
     if (tab === 'profile') loadProf();
-    if (tab === 'admin') {
+    if (tab === 'admin') { loadUsers();
       api.kpis().then(setKpis).catch(() => setKpis({
         satisfaction: 4.4, feedback_count: 37, load_stddev: 18.2, conflict_rate: 3.1, total_meetings: 64,
         mentor_load: [{ full_name: 'Priya Sharma', active_mentees: 2, max_mentees: 5, load_pct: 40 }, { full_name: 'Rahul Verma', active_mentees: 1, max_mentees: 4, load_pct: 25 }]
@@ -297,7 +299,10 @@ export default function Dashboard() {
                 <p style={{ color: 'var(--muted)' }}>Active mentees now: <b>{prof.active_mentees ?? '—'}</b> (capacity enforced by backend, not this form)</p>
               </>)}
               <label htmlFor="pf-bio">Bio</label><textarea id="pf-bio" name="bio" rows="3" maxLength="500" defaultValue={prof.profile?.bio || ''} />
-              <div style={{ marginTop: 12 }}><button className="btn btn-green btn-sm" type="submit">Save profile</button></div>
+              <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button className="btn btn-green btn-sm" type="submit">Save profile</button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => { if (window.confirm('Deactivate your account? You will be logged out immediately.')) api.profileDel().then(() => { localStorage.clear(); location.href = '/login'; }).catch(e => setMsg(e.message)); }}>Deactivate my account</button>
+              </div>
             </form>
           )}
         </div>
@@ -319,6 +324,25 @@ export default function Dashboard() {
             <h3>Mentor load — <span style={{ fontWeight: 400, fontSize: 14, color: 'var(--muted)' }}>from v_mentor_load (capacity balance evidence)</span></h3>
             <table className="tbl"><thead><tr><th>Mentor</th><th>Active</th><th>Cap</th><th>Load</th></tr></thead>
               <tbody>{(kpis?.mentor_load || []).map((x, i) => <tr key={i}><td>{x.full_name}</td><td>{x.active_mentees}</td><td>{x.max_mentees}</td><td><div className="meter"><i style={{ width: x.load_pct + '%' }} /></div>{x.load_pct}%</td></tr>)}</tbody></table>
+          </div>
+          <div className="card rv" style={{ marginTop: 14 }}>
+            <h3>Users — <span style={{ fontWeight: 400, fontSize: 14, color: 'var(--muted)' }}>operate the service</span></h3>
+            <label htmlFor="uq">Search email / name</label>
+            <input id="uq" placeholder="e.g. alumni" onChange={e => loadUsers(e.target.value)} />
+            <table className="tbl" style={{ marginTop: 8 }}><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Active</th><th>Actions</th></tr></thead>
+              <tbody>{usersList.map(u => (
+                <tr key={u.id}>
+                  <td>{u.full_name}</td><td style={{ fontSize: 12 }}>{u.email}</td><td>{u.role}</td><td>{u.is_active ? 'yes' : 'no'}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => { if (window.confirm((u.is_active ? 'Deactivate ' : 'Reactivate ') + u.email + '?')) api.adminUserUpdate(u.id, { is_active: u.is_active ? 0 : 1 }).then(() => loadUsers(document.getElementById('uq')?.value || '')).catch(e => setMsg(e.message)); }}>{u.is_active ? 'Deactivate' : 'Reactivate'}</button>
+                    {u.role === 'alumni' && <button className="btn btn-ghost btn-sm" style={{ marginLeft: 6 }} onClick={() => { const cap = window.prompt('New mentee cap (1–20) for ' + u.email + '?'); if (cap) api.adminUserUpdate(u.id, { max_mentees: +cap }).then(() => setMsg('Cap updated')).catch(e => setMsg(e.message)); }}>Set cap</button>}
+                  </td>
+                </tr>
+              ))}</tbody></table>
+            <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => api.exportCsv('audit').catch(e => setMsg(e.message))}>⬇ audit.csv</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => api.exportCsv('mentor-load').catch(e => setMsg(e.message))}>⬇ mentor-load.csv</button>
+            </div>
           </div>
           <div className="card rv" style={{ marginTop: 14 }}>
             <h3>Audit trail — <span style={{ fontWeight: 400, fontSize: 14, color: 'var(--muted)' }}>append-only (UPDATE/DELETE blocked by trigger)</span></h3>

@@ -174,6 +174,13 @@ r.put('/profile', v(schemas.profile), async (req, res) => {
   await audit(req.user.id, 'PROFILE.UPDATED', 'users', req.user.id, { role: req.user.role }, req.ip);
   res.json({ id: req.user.id, updated: true });
 });
+r.delete('/profile', async (req, res) => {
+  // Right-to-erasure (SaaS privacy): deactivate own account + revoke sessions.
+  await q('UPDATE users SET is_active = 0 WHERE id = :id', { id: req.user.id });
+  await q('UPDATE refresh_tokens SET revoked = 1 WHERE user_id = :who AND revoked = 0', { who: req.user.id });
+  await audit(req.user.id, 'PROFILE.DEACTIVATED', 'users', req.user.id, {}, req.ip);
+  res.json({ id: req.user.id, deactivated: true });
+});
 
 // ---- My matches (student sees own, alumni sees incoming; two static queries, no dynamic SQL) ----
 r.get('/matches/mine', async (req, res) => {
@@ -374,6 +381,51 @@ r.post('/feedback', v(schemas.feedback), async (req, res) => {
   await audit(req.user.id, 'FEEDBACK.SUBMITTED', 'feedback', id, b, req.ip);
   await notify(toId, 'FEEDBACK.SUBMITTED', 'New meeting rating', `You received a ${b.rating}/5 rating.`, '/app');
   res.status(201).json({ id });
+});
+
+// ---- Coordinator: user management (operate the service) ----
+r.get('/admin/users', allow('coordinator', 'admin'), async (req, res) => {
+  const { limit, offset, qstr } = page(req);
+  const rows = await q(`SELECT id, email, role, full_name, is_active, created_at FROM users
+                         ${qstr ? `WHERE LOWER(email) LIKE '%' || LOWER(:qstr) || '%' OR LOWER(full_name) LIKE '%' || LOWER(:qstr) || '%'` : ''}
+                         ORDER BY created_at DESC OFFSET :off ROWS FETCH NEXT :lim ROWS ONLY`,
+    qstr ? { qstr, off: offset, lim: limit } : { off: offset, lim: limit });
+  res.json(rows.map(u => ({ ...u, is_active: Number(u.is_active) })));
+});
+r.patch('/admin/users/:id', vId('id'), allow('coordinator', 'admin'), async (req, res) => {
+  const { is_active, max_mentees } = req.body;
+  if (is_active !== undefined && ![0, 1, true, false].includes(is_active)) return res.status(400).json({ error: 'bad is_active' });
+  if (max_mentees !== undefined && (Number(max_mentees) < 1 || Number(max_mentees) > 20)) return res.status(400).json({ error: 'bad max_mentees' });
+  const u = await one('SELECT id, role FROM users WHERE id = :id', { id: req.params.id });
+  if (!u) return res.status(404).json({ error: 'User not found' });
+  if (req.params.id === req.user.id) return res.status(400).json({ error: 'Cannot change own account here' });
+  if (is_active !== undefined) {
+    const v = is_active ? 1 : 0;
+    await q('UPDATE users SET is_active = :v WHERE id = :id', { v, id: req.params.id });
+    if (!v) await q('UPDATE refresh_tokens SET revoked = 1 WHERE user_id = :who', { who: req.params.id });
+  }
+  if (max_mentees !== undefined && u.role === 'alumni') {
+    await q('UPDATE alumni_profiles SET max_mentees = :cap WHERE user_id = :id', { cap: Number(max_mentees), id: req.params.id });
+  }
+  await audit(req.user.id, 'ADMIN.USER_UPDATED', 'users', req.params.id, { is_active, max_mentees }, req.ip);
+  res.json({ id: req.params.id, updated: true });
+});
+
+// ---- Coordinator: CSV exports for stakeholders ----
+function csv(rows) {
+  if (!rows.length) return 'empty\n';
+  const keys = Object.keys(rows[0]);
+  const esc = (x) => `"${String(x ?? '').replace(/"/g, '""')}"`;
+  return keys.join(',') + '\n' + rows.map(o => keys.map(k => esc(o[k])).join(',')).join('\n');
+}
+r.get('/admin/export/audit', allow('coordinator', 'admin'), async (req, res) => {
+  const rows = await q(`SELECT id, actor_user_id, action, entity, entity_id, ip, created_at
+                          FROM audit_logs ORDER BY id DESC FETCH FIRST 1000 ROWS ONLY`);
+  res.set('Content-Type', 'text/csv').set('Content-Disposition', 'attachment; filename="audit.csv"').send(csv(rows));
+});
+r.get('/admin/export/mentor-load', allow('coordinator', 'admin'), async (req, res) => {
+  const rows = await q('SELECT alumni_id, full_name, max_mentees, active_mentees, load_pct FROM v_mentor_load');
+  res.set('Content-Type', 'text/csv').set('Content-Disposition', 'attachment; filename="mentor-load.csv"').send(csv(rows));
 });
 
 // ---- Coordinator: audit trail (read-only, paged) ----

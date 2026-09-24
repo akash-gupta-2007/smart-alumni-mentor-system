@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { api } from '../lib/api.js';
+import { api, saveSession } from '../lib/api.js';
 import { useReveal } from '../components/motion.jsx';
 
 function ForgotForm({ back }) {
@@ -31,15 +31,15 @@ export default function Login() {
   useReveal();
   const [q] = useSearchParams();
   const [mode, setMode] = useState(q.get('mode') === 'register' ? 'register' : 'login');
-  const [f, setF] = useState({ email: 'student1@college.edu', password: 'Password123!', full_name: 'Demo Student', role: 'student' });
+  const [f, setF] = useState({ email: 'student1@college.edu', password: 'Password123!', full_name: 'Demo Student', role: 'student', consent: false });
   const [err, setErr] = useState('');
   const nav = useNavigate();
   const go = async (e) => {
     e.preventDefault(); setErr('');
     try {
       const r = mode === 'login' ? await api.login({ email: f.email, password: f.password })
-        : await api.register({ email: f.email, password: f.password, full_name: f.full_name, role: f.role });
-      localStorage.setItem('mm_token', r.token);
+        : await api.register({ email: f.email, password: f.password, full_name: f.full_name, role: f.role, consent: !!f.consent });
+      saveSession(r);
       const me = r.user || await api.me().catch(() => ({ full_name: f.full_name, role: f.role }));
       localStorage.setItem('mm_user', JSON.stringify(me));
       nav('/app');
@@ -58,6 +58,12 @@ export default function Login() {
           {mode === 'register' && (<><label>Full name</label><input value={f.full_name} onChange={e => setF({ ...f, full_name: e.target.value })} /><label>Role</label><select value={f.role} onChange={e => setF({ ...f, role: e.target.value })}><option value="student">Student</option><option value="alumni">Alumni</option></select></>)}
           <label>Email</label><input value={f.email} onChange={e => setF({ ...f, email: e.target.value })} />
           <label>Password (10+ chars, UPPER+lower+digit)</label><input type="password" value={f.password} onChange={e => setF({ ...f, password: e.target.value })} />
+          {mode === 'register' && (
+            <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', textTransform: 'none', letterSpacing: 0, fontWeight: 400 }}>
+              <input type="checkbox" style={{ width: 18, marginTop: 2 }} checked={f.consent} onChange={e => setF({ ...f, consent: e.target.checked })} />
+              I consent to MentorSetu storing my profile, availability and mentorship activity to operate the matching service (demo data only).
+            </label>
+          )}
           {err && <p style={{ color: 'var(--danger)' }}>{err}</p>}
           <div style={{ marginTop: 16, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><button className="btn btn-gold" type="submit">{mode === 'login' ? 'Login →' : 'Create account →'}</button>
           {mode === 'login' && <button type="button" className="btn btn-ghost btn-sm" onClick={() => setMode('forgot')}>Forgot password?</button>}</div>

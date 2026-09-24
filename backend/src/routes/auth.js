@@ -3,10 +3,21 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { v4: uuid } = require('uuid');
 const { q, one } = require('../config/db');
-const { sign } = require('../middleware/auth');
+const { sign, signRefresh, verifyRefresh } = require('../middleware/auth');
 const { v, schemas } = require('../middleware/validate');
 const { audit } = require('../middleware/audit');
 const r = express.Router();
+
+// Issue an access + refresh pair; refresh stored hashed server-side (rotation).
+async function issuePair(u) {
+  const token = sign(u);
+  const refreshToken = signRefresh(u);
+  const th = crypto.createHash('sha256').update(refreshToken).digest('hex');
+  await q(`INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at)
+           VALUES (:id, :who, :th, SYSTIMESTAMP + INTERVAL '30' DAY)`,
+    { id: uuid(), who: u.id, th });
+  return { token, refreshToken };
+}
 
 // POST /api/auth/register — student/alumni self-onboarding (coordinator seeded via SQL*Plus)
 r.post('/register', v(schemas.register), async (req, res) => {
@@ -28,7 +39,7 @@ r.post('/register', v(schemas.register), async (req, res) => {
                VALUES (:id, 2022, :tags, 5)`, { id, tags: JSON.stringify(['Web Dev', 'DevOps']) });
     }
     await audit(id, 'AUTH.REGISTER', 'users', id, { role }, req.ip);
-    res.status(201).json({ id, token: sign({ id, role, email }) });
+    res.status(201).json({ id, ...(await issuePair({ id, role, email })) });
   } catch (e) {
     if (e.errorNum === 1) return res.status(409).json({ error: 'Email already registered' });
     res.status(500).json({ error: 'Register failed' });
@@ -55,7 +66,7 @@ r.post('/login', v(schemas.login), async (req, res) => {
     }
     await q('BEGIN mentor_sec.proc_reg_success(:email); END;', { email: mail });
     await audit(u.id, 'AUTH.LOGIN', 'users', u.id, {}, req.ip);
-    res.json({ token: sign(u), user: { id: u.id, role: u.role, full_name: u.full_name, email: u.email } });
+    res.json({ ...(await issuePair(u)), user: { id: u.id, role: u.role, full_name: u.full_name, email: u.email } });
   } catch {
     res.status(500).json({ error: 'Login failed' });
   }
@@ -101,7 +112,28 @@ r.post('/reset', async (req, res) => {
   res.json({ ok: true });
 });
 r.post('/logout', auth, async (req, res) => {
+  const { refreshToken } = req.body || {};
+  if (typeof refreshToken === 'string' && refreshToken) {
+    const th = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    await q('UPDATE refresh_tokens SET revoked = 1 WHERE token_hash = :th AND user_id = :who', { th, who: req.user.id });
+  }
   await audit(req.user.id, 'AUTH.LOGOUT', 'users', req.user.id, {}, req.ip);
   res.json({ ok: true });
+});
+// POST /api/auth/refresh — rotate refresh token, get a fresh pair (SaaS sessions)
+r.post('/refresh', async (req, res) => {
+  const { refreshToken } = req.body || {};
+  if (typeof refreshToken !== 'string' || !refreshToken) return res.status(401).json({ error: 'Missing refresh token' });
+  let p;
+  try { p = verifyRefresh(refreshToken); } catch { return res.status(401).json({ error: 'Invalid refresh token' }); }
+  const th = crypto.createHash('sha256').update(refreshToken).digest('hex');
+  const row = await one(`SELECT id, user_id FROM refresh_tokens
+                         WHERE token_hash = :th AND revoked = 0 AND expires_at > SYSTIMESTAMP`, { th });
+  if (!row || row.user_id !== p.id) return res.status(401).json({ error: 'Invalid refresh token' });
+  const u = await one('SELECT id, email, role FROM users WHERE id = :id AND is_active = 1', { id: row.user_id });
+  if (!u) return res.status(401).json({ error: 'Invalid refresh token' });
+  await q('UPDATE refresh_tokens SET revoked = 1 WHERE id = :id', { id: row.id });
+  await audit(u.id, 'AUTH.REFRESH', 'users', u.id, {}, req.ip);
+  res.json(await issuePair(u));
 });
 module.exports = r;
