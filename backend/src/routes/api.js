@@ -186,6 +186,7 @@ r.delete('/profile', async (req, res) => {
 r.get('/matches/mine', async (req, res) => {
   const { limit, offset, qstr } = page(req);
   const base = `SELECT m.id, m.status, m.score, m.reasons, m.created_at, m.decided_at,
+                       m.alumni_user_id AS alumni_id,
                        u.full_name AS other_name, r2.title AS request_title
                   FROM matches m JOIN users u ON u.id = OTHER_COL
                   JOIN mentorship_requests r2 ON r2.id = m.request_id

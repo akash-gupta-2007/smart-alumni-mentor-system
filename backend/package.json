@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "node --test tests/matching.test.js tests/security.test.js tests/workflow.test.js",
+    "test": "node --test tests/matching.test.js tests/security.test.js tests/workflow.test.js tests/availability.test.js",
     "seed": "node src/seed.js"
   },
   "dependencies": {

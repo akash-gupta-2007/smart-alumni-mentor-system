@@ -3,6 +3,11 @@ const API = '/api';
 // once) must share ONE rotation. Refresh tokens are one-time-use server-side,
 // so firing N concurrent refreshes revokes N-1 of them and logs the user out.
 let refreshPromise = null;
+// Public auth endpoints: a 401 here is a *normal* error (bad credentials,
+// spent reset token), never a session-expiry signal. Every other path —
+// including /auth/me and /auth/logout — may transparently rotate.
+const PUBLIC_AUTH = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/forgot', '/auth/reset'];
+const isPublicAuth = (p) => PUBLIC_AUTH.includes(p);
 function doRefresh() {
   if (!refreshPromise) {
     refreshPromise = (async () => {
@@ -32,7 +37,7 @@ function isTokenExpired(token) {
 async function req(path, opts = {}, retried = false) {
   const token = localStorage.getItem('mm_token');
   // Proactively refresh if token is expired (or about to expire) before sending
-  if (token && isTokenExpired(token) && localStorage.getItem('mm_refresh') && !path.startsWith('/auth/')) {
+  if (token && isTokenExpired(token) && localStorage.getItem('mm_refresh') && !isPublicAuth(path)) {
     try { await doRefresh(); }
     catch { /* fall through, let the 401 handler deal with it */ }
   }
@@ -42,13 +47,15 @@ async function req(path, opts = {}, retried = false) {
     headers: { 'Content-Type': 'application/json', ...(freshToken ? { Authorization: 'Bearer ' + freshToken } : {}), ...(opts.headers || {}) },
     body: opts.body ? JSON.stringify(opts.body) : undefined
   });
-  // 401 on protected endpoint → try one silent refresh
-  if (r.status === 401 && !retried && !path.startsWith('/auth/') && localStorage.getItem('mm_refresh')) {
+  // 401 on a session-bearing endpoint → try one silent refresh
+  if (r.status === 401 && !retried && !isPublicAuth(path) && localStorage.getItem('mm_refresh')) {
     try { await doRefresh(); return req(path, opts, true); }
     catch { /* fall through to logout */ }
   }
   // Only treat 401 as session expiry. 403/404/500 etc. are NOT logout triggers.
-  if (r.status === 401 && !path.startsWith('/auth/') && localStorage.getItem('mm_token')) {
+  // /auth/logout is excluded from the redirect: logout() clears state itself
+  // and navigates via React Router (a hard reload would race it).
+  if (r.status === 401 && !isPublicAuth(path) && path !== '/auth/logout' && localStorage.getItem('mm_token')) {
     localStorage.removeItem('mm_token');
     localStorage.removeItem('mm_refresh');
     localStorage.removeItem('mm_user');

@@ -50,7 +50,7 @@ function Shell() {
           <Route path="/app" element={<Navigate to="/app/profile" replace />} />
           <Route path="/app/profile" element={<Dashboard defaultTab="profile" />} />
           <Route path="/app/matches" element={<Dashboard defaultTab="matches" />} />
-          <Route path="/app/availability" element={<RoleGuard allowedRoles={['alumni','coordinator','admin']}><Dashboard defaultTab="availability" /></RoleGuard>} />
+          <Route path="/app/availability" element={<Dashboard defaultTab="availability" />} />
           <Route path="/app/meetings" element={<Dashboard defaultTab="meetings" />} />
           <Route path="/app/goals" element={<Dashboard defaultTab="goals" />} />
           <Route path="/app/feedback" element={<Dashboard defaultTab="feedback" />} />

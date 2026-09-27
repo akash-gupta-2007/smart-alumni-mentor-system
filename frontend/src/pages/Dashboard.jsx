@@ -8,7 +8,7 @@ import { useReveal } from '../components/motion.jsx';
 
 // UI mirrors backend RBAC exactly: each role only sees tabs its APIs allow.
 const ROLE_TABS = {
-  student: ['matches', 'meetings', 'goals', 'feedback', 'profile'],
+  student: ['matches', 'availability', 'meetings', 'goals', 'feedback', 'profile'],
   alumni: ['matches', 'availability', 'meetings', 'feedback', 'profile'],
   coordinator: ['admin', 'matches', 'profile'],
   admin: ['admin', 'matches', 'profile']
@@ -72,6 +72,27 @@ export default function Dashboard({ defaultTab }) {
   const [fb, setFb] = useState({ meeting_id: '', rating: 5, communication_rating: 5, relevance_rating: 5, comment: 'Great session on CI pipelines!' });
   const [mine, setMine] = useState([]);
   const loadMine = () => api.mine().then(setMine).catch(() => setMine([]));
+  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const [mentorSched, setMentorSched] = useState([]);
+  const [schedState, setSchedState] = useState('idle'); // idle|loading|ready|empty|error
+  // Student read-only view: weekly schedules of own matched mentors.
+  const loadMentorSchedules = async () => {
+    setSchedState('loading');
+    try {
+      const rows = await api.mine();
+      setMine(rows);
+      const seen = new Map();
+      rows.forEach(m => { if (m.alumni_id && !seen.has(m.alumni_id)) seen.set(m.alumni_id, m.other_name || 'Mentor'); });
+      if (!seen.size) { setMentorSched([]); setSchedState('empty'); return; }
+      const all = await Promise.all([...seen].map(async ([aid, name]) => {
+        try { return { alumni_id: aid, name, slots: await api.slots(aid) }; }
+        catch { return { alumni_id: aid, name, slots: null }; }
+      }));
+      setMentorSched(all);
+      setSchedState(all.every(x => !x.slots || !x.slots.length) ? 'empty' : 'ready');
+    } catch { setMentorSched([]); setSchedState('error'); }
+  };
+  const validRange = (st, et) => /^\d{2}:\d{2}$/.test(st || '') && /^\d{2}:\d{2}$/.test(et || '') && et > st;
   const withBusy = (fn) => async (...a) => { setBusy(true); try { return await fn(...a); } finally { setBusy(false); } };
   const [mySlots, setMySlots] = useState([]);
   const [auditRows, setAuditRows] = useState([]);
@@ -105,7 +126,7 @@ export default function Dashboard({ defaultTab }) {
   };
   useEffect(() => {
     if (tab === 'matches') { loadMine(); if (user.role !== 'student') loadOpen(); }
-    if (tab === 'availability') loadSlots();
+    if (tab === 'availability') { if (user.role === 'alumni') loadSlots(); else if (user.role === 'student') loadMentorSchedules(); }
     if (tab === 'meetings') loadMeets();
     if (tab === 'goals') loadGoals();
     if (tab === 'profile') loadProf();
@@ -176,13 +197,33 @@ export default function Dashboard({ defaultTab }) {
 
       {tab === 'availability' && (
         <div className="card rv">
+          {user.role === 'student' ? (<>
+            <h3>Mentor availability (read-only)</h3>
+            <p style={{ color: 'var(--muted)' }}>Weekly schedules of your matched mentors. Only mentors can change their own slots.</p>
+            {schedState === 'loading' && <p style={{ color: 'var(--muted)' }} role="status">Loading mentor schedules…</p>}
+            {schedState === 'error' && <p style={{ color: 'var(--danger)' }} role="alert">Unable to load schedules. Please try again.</p>}
+            {schedState === 'empty' && <p style={{ color: 'var(--muted)' }}>No mentor schedules to show yet — request a mentor from Matches first.</p>}
+            {mentorSched.map(ms => (
+              <div key={ms.alumni_id} style={{ borderBottom: '1px solid var(--line)', padding: '10px 0' }}>
+                <b>{ms.name}</b>
+                {!ms.slots && <div style={{ color: 'var(--danger)', fontSize: 13 }}>Could not load this mentor's slots.</div>}
+                {ms.slots && !ms.slots.length && <div style={{ color: 'var(--muted)', fontSize: 13 }}>No slots published.</div>}
+                {ms.slots && !!ms.slots.length && (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                    {ms.slots.map(s => <span className="chip" key={s.id}>{DAYS[s.day_of_week]} · {s.start_time}–{s.end_time}</span>)}
+                  </div>
+                )}
+              </div>
+            ))}
+          </>) : (<>
           <h3>Availability calendar (alumni)</h3>
           <p style={{ color: 'var(--muted)' }}>Weekly recurring slots. Meetings outside these days return <b>OUTSIDE_AVAILABILITY</b>.</p>
+          {user.role === 'alumni' && (<>
           <div className="grid4">
             <div><label>Day (0=Sun)</label><input type="number" min="0" max="6" value={slot.day_of_week} onChange={e => setSlot({ ...slot, day_of_week: +e.target.value })} /></div>
-            <div><label>Start</label><input value={slot.start_time} onChange={e => setSlot({ ...slot, start_time: e.target.value })} /></div>
-            <div><label>End</label><input value={slot.end_time} onChange={e => setSlot({ ...slot, end_time: e.target.value })} /></div>
-            <div><label>&nbsp;</label><button className="btn btn-green btn-sm" onClick={() => api.addSlot(slot).then(() => { setMsg('Slot saved'); loadSlots(); }).catch(e => setMsg(e.message))}>Add slot</button></div>
+            <div><label>Start</label><input value={slot.start_time} placeholder="18:00" onChange={e => setSlot({ ...slot, start_time: e.target.value })} /></div>
+            <div><label>End</label><input value={slot.end_time} placeholder="20:00" onChange={e => setSlot({ ...slot, end_time: e.target.value })} /></div>
+            <div><label>&nbsp;</label><button className="btn btn-green btn-sm" onClick={() => { if (!validRange(slot.start_time, slot.end_time)) { setMsg('Use HH:MM format; end time must be after start time.'); return; } api.addSlot(slot).then(() => { setMsg('Slot saved'); loadSlots(); }).catch(e => setMsg(e.message)); }}>Add slot</button></div>
           </div>
           <div style={{ marginTop: 12 }}>
             {!mySlots.length && <p style={{ color: 'var(--muted)' }}>No slots yet — add your weekly hours above.</p>}
@@ -197,6 +238,7 @@ export default function Dashboard({ defaultTab }) {
                       const d = +document.getElementById('d-' + s.id).value;
                       const st = document.getElementById('s-' + s.id).value;
                       const et = document.getElementById('e-' + s.id).value;
+                      if (!validRange(st, et)) { setMsg('Use HH:MM format; end time must be after start time.'); return; }
                       api.slotUpdate(s.id, { day_of_week: d, start_time: st, end_time: et }).then(() => { setEditSlot(null); loadSlots(); }).catch(e => setMsg(e.message));
                     }}>Save</button>
                     <button className="btn btn-ghost btn-sm" onClick={() => setEditSlot(null)}>Cancel</button>
@@ -210,6 +252,7 @@ export default function Dashboard({ defaultTab }) {
               </span>
             ))}
           </div>
+          </>)}
           {user.role !== 'student' && (
             <div style={{ marginTop: 14 }}>
               <h4>Open student requests</h4>
@@ -219,6 +262,7 @@ export default function Dashboard({ defaultTab }) {
               {openReq.map(o => <div key={o.id} style={{ borderBottom: '1px solid var(--line)', padding: '8px 0' }}><b>{o.title}</b> <span className="chip">{o.goal_type}</span><span className="chip">{o.domain}</span><span style={{ color: 'var(--muted)', fontSize: 13 }}>{o.language}</span></div>)}
             </div>
           )}
+          </>)}
         </div>
       )}
 
