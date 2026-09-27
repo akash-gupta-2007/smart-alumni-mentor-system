@@ -55,11 +55,14 @@ export default function Navbar() {
 
   const goLogout = async () => { await logout(); nav('/'); };
 
+  // Logo navigates to /app when authenticated, / when public
+  const logoHref = user ? '/app' : '/';
+
   return (
     <div className="nav">
       <a href="#main" className="btn btn-ghost btn-sm" style={{ position: 'absolute', left: -9999 }} onFocus={e => { e.target.style.left = 8; e.target.style.top = 8; e.target.style.zIndex = 100; }} onBlur={e => { e.target.style.left = -9999; }}>Skip to content</a>
       <div className="nav-inner">
-        <Link to="/" className="nav-brand" aria-label="MentorSetu home">
+        <Link to={logoHref} className="nav-brand" aria-label={user ? "MentorSetu workspace" : "MentorSetu home"}>
           <span className="nav-mark" aria-hidden="true"><span style={{ color: 'var(--white)', fontSize: 13, lineHeight: 1 }}>◆</span></span>
           Mentor<span className="gold-text">Setu</span>
         </Link>
@@ -68,7 +71,13 @@ export default function Navbar() {
           <nav className="nav-links" aria-label="Primary">
             {!user && <NavLink to="/#how" onClick={() => setOpen(false)}>How it scores</NavLink>}
             {!user && <NavLink to="/#modules" onClick={() => setOpen(false)}>Modules</NavLink>}
-            {user && <NavLink to="/app" onClick={() => setOpen(false)}>Workspace</NavLink>}
+            {user && <NavLink to="/app/profile" onClick={() => setOpen(false)}>Profile</NavLink>}
+            {user && <NavLink to="/app/matches" onClick={() => setOpen(false)}>Matches</NavLink>}
+            {user && <NavLink to="/app/availability" onClick={() => setOpen(false)}>Availability</NavLink>}
+            {user && <NavLink to="/app/meetings" onClick={() => setOpen(false)}>Meetings</NavLink>}
+            {user && <NavLink to="/app/goals" onClick={() => setOpen(false)}>Goals</NavLink>}
+            {user && <NavLink to="/app/feedback" onClick={() => setOpen(false)}>Feedback</NavLink>}
+            {user && (user.role === 'coordinator' || user.role === 'admin') && <NavLink to="/app/admin" onClick={() => setOpen(false)}>Admin</NavLink>}
           </nav>
           <div className="nav-cta">
             <button className="nav-icon-btn" onClick={toggle} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>{theme === 'dark' ? <IconSun size={18} /> : <IconMoon size={18} />}</button>

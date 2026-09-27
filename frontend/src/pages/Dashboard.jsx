@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { api, apiStatus, mockSuggest } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 import MatchCard from '../components/MatchCard.jsx';
@@ -13,13 +14,47 @@ const ROLE_TABS = {
   admin: ['admin', 'matches', 'profile']
 };
 const DEFAULT_TAB = { student: 'matches', alumni: 'matches', coordinator: 'admin', admin: 'admin' };
-export default function Dashboard() {
+
+export default function Dashboard({ defaultTab }) {
   useReveal([]);
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const role = user?.role || 'student';
   const tabs = ROLE_TABS[role] || ROLE_TABS.student;
-  const [tab, setTab] = useState(DEFAULT_TAB[role] || 'matches');
-  useEffect(() => { setTab(DEFAULT_TAB[role] || 'matches'); }, [role]);
+  
+  // Use URL to determine active tab, fallback to defaultTab prop or role default
+  const getTabFromPath = () => {
+    const path = location.pathname;
+    if (path === '/app/profile') return 'profile';
+    if (path === '/app/matches') return 'matches';
+    if (path === '/app/availability') return 'availability';
+    if (path === '/app/meetings') return 'meetings';
+    if (path === '/app/goals') return 'goals';
+    if (path === '/app/feedback') return 'feedback';
+    if (path === '/app/admin') return 'admin';
+    return null;
+  };
+  
+  const initialTab = getTabFromPath() || defaultTab || DEFAULT_TAB[role] || 'matches';
+  const [tab, setTab] = useState(initialTab);
+  
+  // Sync tab with URL
+  useEffect(() => {
+    const urlTab = getTabFromPath();
+    if (urlTab && urlTab !== tab) {
+      setTab(urlTab);
+    }
+  }, [location.pathname]);
+  
+  const changeTab = (newTab) => {
+    if (tabs.includes(newTab)) {
+      setTab(newTab);
+      navigate(`/app/${newTab}`, { replace: true });
+    }
+  };
+  
+  // ... rest of the component
   const [req, setReq] = useState({ title: 'DevOps mentorship for placement', goal_type: 'placement', domain: 'DevOps', language: 'English' });
   const [requestId, setRequestId] = useState('');
   const [matches, setMatches] = useState([]);
@@ -88,7 +123,7 @@ export default function Dashboard() {
       <div className="eyebrow rv">Workspace</div>
       <h2 className="rv" style={{ fontSize: 'clamp(27px, 3.8vw, 40px)' }}>Namaste, {user.full_name} <span className="chip chip-gold">{user.role}</span> <span className={`chip ${online === 'online' ? 'chip-live' : online === 'offline' ? 'chip-danger' : ''}`} title="API reachability"><i className="dot" aria-hidden="true" /> {online === 'online' ? 'API live' : online === 'offline' ? 'API offline — demo mode' : '… checking API'}</span></h2>
       {online === 'offline' && <div className="card rv" style={{ borderColor: 'var(--danger)', marginBottom: 14 }}>Backend not reachable. Start it with <b>start-local.bat</b> (or <code>node src/server.js</code> in <code>backend/</code>), then refresh. Meanwhile every tab below still works with built-in demo data.</div>}
-      <div className="tabs rv" role="tablist" aria-label="Workspace sections">{tabs.map(t => <button key={t} role="tab" aria-selected={tab === t} disabled={busy} className={`btn btn-sm ${tab === t ? 'btn-gold tab-active' : 'btn-ghost'}`} onClick={() => setTab(t)}>{t}</button>)}</div>
+      <div className="tabs rv" role="tablist" aria-label="Workspace sections">{tabs.map(t => <button key={t} role="tab" aria-selected={tab === t} disabled={busy} className={`btn btn-sm ${tab === t ? 'btn-gold tab-active' : 'btn-ghost'}`} onClick={() => changeTab(t)}>{t}</button>)}</div>
       {busy && <div className="card rv" aria-busy="true" aria-live="polite">Working…</div>}
       {msg && <div className="card rv" style={{ borderColor: 'var(--gold)', marginBottom: 14 }}>{msg}</div>}
 

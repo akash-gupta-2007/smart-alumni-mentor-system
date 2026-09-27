@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
 import Navbar from './components/Navbar.jsx';
 import ScrollToHash from './components/ScrollToHash.jsx';
 import { useReveal } from './components/motion.jsx';
@@ -17,21 +17,47 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
-function Shell() {
+// Role-based access control for nested routes
+function RoleGuard({ children, allowedRoles }) {
+  const { user } = useAuth();
+  if (!allowedRoles.includes(user?.role)) {
+    return <Navigate to="/app" replace />;
+  }
+  return children;
+}
+
+function WorkspaceLayout() {
   useReveal();
+  return (
+    <>
+      <Navbar />
+      <main id="main">
+        <Outlet />
+      </main>
+      <Footer />
+    </>
+  );
+}
+
+function Shell() {
   return (
     <BrowserRouter>
       <ScrollToHash />
-      <Navbar />
-      <main id="main">
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/app" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-      </main>
-      <Footer />
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route element={<ProtectedRoute><WorkspaceLayout /></ProtectedRoute>}>
+          <Route path="/app" element={<Navigate to="/app/profile" replace />} />
+          <Route path="/app/profile" element={<Dashboard defaultTab="profile" />} />
+          <Route path="/app/matches" element={<Dashboard defaultTab="matches" />} />
+          <Route path="/app/availability" element={<RoleGuard allowedRoles={['alumni','coordinator','admin']}><Dashboard defaultTab="availability" /></RoleGuard>} />
+          <Route path="/app/meetings" element={<Dashboard defaultTab="meetings" />} />
+          <Route path="/app/goals" element={<Dashboard defaultTab="goals" />} />
+          <Route path="/app/feedback" element={<Dashboard defaultTab="feedback" />} />
+          <Route path="/app/admin" element={<RoleGuard allowedRoles={['coordinator','admin']}><Dashboard defaultTab="admin" /></RoleGuard>} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
     </BrowserRouter>
   );
 }
