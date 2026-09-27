@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
@@ -36,6 +36,7 @@ export default function Login() {
   const [q] = useSearchParams();
   const { login, register } = useAuth();
   const [mode, setMode] = useState(mode0(q));
+  useEffect(() => { setMode(mode0(q)); setErr(''); }, [q]);
   const [f, setF] = useState({ email: 'student1@college.edu', password: 'Password123!', full_name: 'Demo Student', role: 'student', consent: false });
   const [showPw, setShowPw] = useState(false);
   const [err, setErr] = useState('');

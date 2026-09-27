@@ -2,7 +2,7 @@
 
 ## Local (supported, tested)
 1. Oracle XE running (`system/admin@//localhost:1521/XEPDB1`).
-2. `database/setup.sql` order via SQL*Plus (schema → seed → migrate_02).
+2. `database/setup.sql` order via SQL*Plus (schema → seed → migrate_02..06).
 3. `backend/`: copy `.env.example` → `.env`, set `DB_PASSWORD` to match DB user + 32+ char `JWT_SECRET`; `npm install`; `npm test`; `node src/server.js` (:4000).
 4. `frontend/`: `npm install`; `npm run dev` (:5173) or `npm run build` + serve `dist/`. Or double-click `start-local.bat`.
 

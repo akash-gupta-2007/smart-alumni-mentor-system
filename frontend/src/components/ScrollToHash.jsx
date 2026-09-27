@@ -11,7 +11,7 @@ export default function ScrollToHash() {
       const el = document.querySelector(hash);
       if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
     }
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [pathname, hash, search]);
   return null;
 }
