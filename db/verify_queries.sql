@@ -11,8 +11,8 @@ SELECT id, title, goal_type, domain, status FROM mentorship_requests WHERE statu
 PROMPT --- 4. recent audit trail ---
 SELECT id, action, entity, created_at FROM audit_logs ORDER BY id DESC FETCH FIRST 15 ROWS ONLY;
 PROMPT --- 5. failed-login shield state ---
-SELECT email, COUNT(*) AS fails_15min FROM login_attempts
- WHERE success = 0 AND attempted_at > SYSTIMESTAMP - INTERVAL '15' MINUTE GROUP BY email;
+SELECT email, COUNT(*) AS fails_15min FROM login_attempts WHERE success = 0 AND attempted_at > SYSTIMESTAMP - INTERVAL '15' MINUTE GROUP BY email;
 PROMPT --- 6. satisfaction snapshot ---
 SELECT ROUND(AVG(rating),2) AS avg_rating, COUNT(*) AS n FROM feedback;
 EXIT;
+
